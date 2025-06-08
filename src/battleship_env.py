@@ -158,26 +158,37 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
             seed = hash(optimal_answer) % 1000000
             local_random = random_module.Random(seed)
             
-            # Generate a game with deterministic moves
-            game = BattleshipGame()
+            # Temporarily replace global random with our local instance
+            original_choice = random_module.choice
+            original_randint = random_module.randint
+            random_module.choice = local_random.choice
+            random_module.randint = local_random.randint
             
-            # Make a deterministic number of moves based on the seed
-            num_moves = seed % 20  # 0-19 moves, deterministic based on seed
-            
-            for i in range(num_moves):
-                valid_moves = game.get_valid_moves()
-                if not valid_moves:
-                    break
-                    
-                # Use deterministic selection instead of random.choice
-                move_index = (seed + i) % len(valid_moves)
-                move = valid_moves[move_index]
+            try:
+                # Generate a game with deterministic ship placement
+                game = BattleshipGame()
                 
-                game.step(move)
-                if game.game_over:
-                    break
-            
-            return game
+                # Make a deterministic number of moves based on the seed
+                num_moves = seed % 20  # 0-19 moves, deterministic based on seed
+                
+                for i in range(num_moves):
+                    valid_moves = game.get_valid_moves()
+                    if not valid_moves:
+                        break
+                        
+                    # Use deterministic selection instead of random.choice
+                    move_index = (seed + i) % len(valid_moves)
+                    move = valid_moves[move_index]
+                    
+                    game.step(move)
+                    if game.game_over:
+                        break
+                
+                return game
+            finally:
+                # Restore original random functions
+                random_module.choice = original_choice
+                random_module.randint = original_randint
             
         except Exception as e:
             logger.warning(f"Error creating deterministic game: {e}, using default")

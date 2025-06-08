@@ -7,6 +7,7 @@ class BattleshipGame:
         self.cols = string.ascii_lowercase[:board_size]
         self.rows = [str(r) for r in range(1, board_size + 1)]
         self.ship_sizes = ship_sizes if ship_sizes else [5, 4, 3, 3, 2]  # carrier, battleship, cruiser, sub, destroyer
+        self.ship_names = {5: "Carrier", 4: "Battleship", 3: "Cruiser", 2: "Destroyer"}
 
         self.reset()
 
@@ -16,6 +17,7 @@ class BattleshipGame:
         self.history = []
         self.turn_count = 0
         self.game_over = False
+        self.last_move_invalid = False
 
         for size in self.ship_sizes:
             placed = False
@@ -45,12 +47,15 @@ class BattleshipGame:
             # invalid move
             hit = False
             sunk = False
+            self.last_move_invalid = True
             self.history.append(move)
             self.turn_count += 1
             return self.render(), hit, sunk, self.game_over, True
 
         hit = False
         sunk = False
+        sunk_ship = None
+        self.last_move_invalid = False
 
         for ship in self.ships:
             if move in ship["coords"]:
@@ -58,11 +63,14 @@ class BattleshipGame:
                 hit = True
                 if set(ship["hits"]) == set(ship["coords"]):
                     sunk = True
+                    sunk_ship = ship
                 break
 
         if hit:
             if sunk:
-                self.board[move] = "s"
+                # Mark all positions of the sunk ship as 's'
+                for coord in sunk_ship["coords"]:
+                    self.board[coord] = "s"
             else:
                 self.board[move] = "x"
         else:
@@ -82,18 +90,29 @@ class BattleshipGame:
         Returns the board + ships remaining + turn history as a text string for LLM prompt.
         """
         lines = []
-        header = "  " + " ".join(self.cols)
+        header = "    " + "".join(f"{c}  " for c in self.cols)
         lines.append(header)
         for r in self.rows:
             row_cells = []
             for c in self.cols:
                 row_cells.append(f"[{self.board[f'{c}{r}']}]")
-            lines.append(f"{r.rjust(2)} {' '.join(row_cells)}")
+            lines.append(f"{r.rjust(2)} {''.join(row_cells)}")
 
         remaining = []
+        ship_counts = {}
         for ship in self.ships:
             if set(ship["hits"]) != set(ship["coords"]):
-                remaining.append(f"Ship ({len(ship['coords'])})")
+                size = len(ship["coords"])
+                if size == 3:
+                    # Handle both cruiser and submarine (both size 3)
+                    if ship_counts.get(3, 0) == 0:
+                        name = "Cruiser"
+                    else:
+                        name = "Submarine"
+                    ship_counts[3] = ship_counts.get(3, 0) + 1
+                else:
+                    name = self.ship_names[size]
+                remaining.append(f"{name} ({size})")
         if not remaining:
             remaining.append("None")
 
@@ -101,8 +120,10 @@ class BattleshipGame:
         lines.append("Remaining ships: " + ", ".join(remaining))
         lines.append("")
         lines.append("Turn history: " + " ".join(self.history) if self.history else "Turn history: (none)")
+        if self.last_move_invalid:
+            lines.append("")
+            lines.append("WARNING: Previous move was INVALID and wasted a turn!")
         lines.append("")
-        lines.append("Make a turn like: [b7]")
 
         return "\n".join(lines)
 

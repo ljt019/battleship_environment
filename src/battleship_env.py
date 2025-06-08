@@ -34,11 +34,10 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         
         super().__init__(
             max_turns=max_turns,
-            dataset=dataset,  # Each row provides a starting board state and optimal move
+            dataset=dataset,
             system_prompt="You are an expert battleship player. Given a board state, choose the best next move by responding with coordinates in brackets like [d6].",
             parser=BattleshipAnswerParser(),
             rubric=vf.Rubric(),
-            message_type='completion'  # Use completion format instead of chat to avoid tokenization issues
         )
         self.game_generator = BattleshipGameGenerator()
     

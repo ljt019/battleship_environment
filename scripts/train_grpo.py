@@ -27,6 +27,7 @@ def main():
         processing_class=tokenizer,
         env=env,
         args=training_args,
+        mask_env_responses=True
     )
     
     trainer.train()

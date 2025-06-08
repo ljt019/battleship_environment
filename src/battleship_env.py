@@ -37,7 +37,8 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
             dataset=dataset,  # Each row provides a starting board state and optimal move
             system_prompt="You are an expert battleship player. Given a board state, choose the best next move by responding with coordinates in brackets like [d6].",
             parser=BattleshipAnswerParser(),
-            rubric=vf.Rubric()
+            rubric=vf.Rubric(),
+            message_type='completion'  # Use completion format instead of chat to avoid tokenization issues
         )
         self.game_generator = BattleshipGameGenerator()
     
@@ -127,11 +128,11 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         state['moves_made'] = state.get('moves_made', 0) + 1
         state['last_move_reward'] = move_reward
         
-        # Prepare response - keep it simple to avoid tokenization issues
+        # Use the same board representation that worked perfectly in SFT
         if game_over:
             response_content = f"{response_parts[0]} {response_parts[-1]}"
         else:
-            response_content = f"{response_parts[0]} {observation} Your move:"
+            response_content = f"{response_parts[0]}\n\n{observation}\n\nYour next move:"
         
         return {
             'role': 'user',

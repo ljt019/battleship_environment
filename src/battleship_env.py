@@ -61,6 +61,11 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         Process the model's move and return environment response.
         Following TextArenaEnv pattern exactly.
         """
+        # Debug logging
+        logger.info(f"[DEBUG] env_response called with {len(messages)} messages")
+        logger.info(f"[DEBUG] Last message: {messages[-1] if messages else 'None'}")
+        logger.info(f"[DEBUG] State has game: {'game' in state}")
+        
         # Initialize game if not exists (deterministic based on state['answer'])
         if 'game' not in state:
             # Create a deterministic game based on the optimal answer
@@ -69,14 +74,17 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
             state['total_reward'] = 0
             state['moves_made'] = 0
             state['is_finished'] = False
+            logger.info(f"[DEBUG] Initialized new game for answer: {state.get('answer', '[a1]')}")
         
         # Only proceed if we have an assistant message to process
         if not messages or messages[-1]['role'] != 'assistant':
             # This should not happen in normal flow, but handle gracefully
-            return {
+            response = {
                 'role': 'user',
                 'content': 'Make your move.'
-            }, state
+            }
+            logger.info(f"[DEBUG] Returning initial prompt: {response}")
+            return response, state
         
         # Game exists, process the move
         game = state['game']
@@ -85,22 +93,30 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         last_message = messages[-1]['content']
         parsed_move = self.parser.parse_answer(last_message)
         
+        logger.info(f"[DEBUG] Parsed move: {parsed_move} from message: {last_message}")
+        
         if not parsed_move:
-            return {
+            response = {
                 'role': 'user',
                 'content': 'Invalid format. Use [coordinate] like [a1].'
-            }, state
+            }
+            logger.info(f"[DEBUG] Invalid move format, returning: {response}")
+            return response, state
         
         # Check if move is valid
         if parsed_move not in game.get_valid_moves():
-            return {
+            response = {
                 'role': 'user',
                 'content': 'Invalid move. Square already revealed.'
-            }, state
+            }
+            logger.info(f"[DEBUG] Invalid move (already revealed), returning: {response}")
+            return response, state
         
         # Execute the move
         observation, hit, sunk, game_over, invalid = game.step(parsed_move)
         state['moves_made'] = state.get('moves_made', 0) + 1
+        
+        logger.info(f"[DEBUG] Move result: hit={hit}, sunk={sunk}, game_over={game_over}, invalid={invalid}")
         
         # Calculate reward
         move_reward = 0
@@ -143,6 +159,7 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         else:
             env_message = {"role": "user", "content": feedback + " Next move."}
         
+        logger.info(f"[DEBUG] Final env response: {env_message}")
         return env_message, state
     
     def _create_deterministic_game(self, optimal_answer: str) -> BattleshipGame:

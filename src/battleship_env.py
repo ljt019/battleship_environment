@@ -100,41 +100,42 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         
         if invalid:
             move_reward = -5
-            response_parts.append("❌ Invalid move!")
+            response_parts.append("Invalid move!")
         elif hit:
             if sunk:
                 move_reward = 10
-                response_parts.append(f"🎯 HIT and SUNK! Great shot at {parsed_move}!")
+                response_parts.append(f"HIT and SUNK! Great shot at {parsed_move}!")
             else:
                 move_reward = 1
-                response_parts.append(f"🎯 HIT at {parsed_move}!")
+                response_parts.append(f"HIT at {parsed_move}!")
         else:
             move_reward = -1
-            response_parts.append(f"💧 Miss at {parsed_move}")
+            response_parts.append(f"Miss at {parsed_move}")
         
         # Bonus for using the optimal move from dataset
         if parsed_move == state.get('optimal_move', '').strip('[]'):
             move_reward += 5
-            response_parts.append("⭐ Great choice!")
+            response_parts.append("Great choice!")
         
         # Win bonus
         if game_over:
             move_reward += 100
-            response_parts.append("🏆 GAME WON! All ships destroyed!")
+            response_parts.append("GAME WON! All ships destroyed!")
         
         # Update state
         state['total_reward'] = state.get('total_reward', 0) + move_reward
         state['moves_made'] = state.get('moves_made', 0) + 1
         state['last_move_reward'] = move_reward
         
-        # Prepare response
-        response_parts.append(f"\n{observation}")
-        if not game_over:
-            response_parts.append("Your move:")
+        # Prepare response - keep it simple to avoid tokenization issues
+        if game_over:
+            response_content = f"{response_parts[0]} {response_parts[-1]}"
+        else:
+            response_content = f"{response_parts[0]} {observation} Your move:"
         
         return {
             'role': 'user',
-            'content': '\n'.join(response_parts)
+            'content': response_content
         }, state
     
     def _parse_board_state_from_question(self, optimal_move_hint):

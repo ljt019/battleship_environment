@@ -22,3 +22,9 @@ venv/
 outputs/
 wandb/
 *.log
+
+# datasets 
+datasets/
+
+# output 
+outputs/

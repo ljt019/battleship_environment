@@ -32,7 +32,7 @@ def main():
     training_args.hub_model_id = "ljt019/Qwen3-1.7B-battleship-rlvr"
     training_args.mask_env_responses = True  # Key parameter from TextArenaEnv
     
-    logger.info("Starting GRPO training with corrected multi-turn environment...")
+    logger.info("Starting GRPO training with truly deterministic game states...")
     
     trainer = vf.GRPOTrainer(
         model=model,

@@ -148,22 +148,29 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         Create a deterministic game state based on the optimal answer.
         This ensures the same dataset row always produces the same game.
         """
-        # Extract coordinate from answer if it exists
         try:
-            # Use the optimal answer as a seed for deterministic game generation
-            seed = hash(optimal_answer) % 10000
-            random.seed(seed)
+            # Use a local Random instance to avoid global state issues
+            import random as random_module
             
-            # Generate a game with some random moves already made
+            # Create deterministic seed from the optimal answer
+            seed = hash(optimal_answer) % 1000000
+            local_random = random_module.Random(seed)
+            
+            # Generate a game with deterministic moves
             game = BattleshipGame()
             
-            # Make some random moves to create an interesting mid-game state
-            num_moves = random.randint(0, 15)
-            for _ in range(num_moves):
+            # Make a deterministic number of moves based on the seed
+            num_moves = seed % 20  # 0-19 moves, deterministic based on seed
+            
+            for i in range(num_moves):
                 valid_moves = game.get_valid_moves()
                 if not valid_moves:
                     break
-                move = random.choice(valid_moves)
+                    
+                # Use deterministic selection instead of random.choice
+                move_index = (seed + i) % len(valid_moves)
+                move = valid_moves[move_index]
+                
                 game.step(move)
                 if game.game_over:
                     break

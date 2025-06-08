@@ -18,16 +18,23 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
     """
     
     def __init__(self, max_turns: int = 50):
-        # Create minimal dummy dataset to satisfy library requirement
-        dummy_data = {
-            'question': ['Start game'],
-            'answer': ['[a1]']
-        }
-        dummy_dataset = Dataset.from_dict(dummy_data)
+        # Load our actual battleship dataset - each row will be a different starting scenario
+        dataset = load_dataset('ljt019/battleship-rlvr-qwen3-dataset', split='train')
+        
+        # Process dataset format for verifiers compatibility
+        def process_example(example):
+            question_content = example['prompt'][0]['content']
+            answer_content = example['completion'][0]['content']
+            return {
+                'question': question_content,
+                'answer': answer_content
+            }
+        
+        dataset = dataset.map(process_example)
         
         super().__init__(
             max_turns=max_turns,
-            dataset=dummy_dataset,  # Required by library, but not used in our MultiTurn flow
+            dataset=dataset,  # Each row provides a starting board state and optimal move
             system_prompt="You are an expert battleship player. Given a board state, choose the best next move by responding with coordinates in brackets like [d6].",
             parser=BattleshipAnswerParser(),
             rubric=vf.Rubric()
@@ -45,20 +52,24 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
     def env_response(self, messages, state, **kwargs):
         """
         Process the model's move and return environment response.
+        Following TextArenaEnv pattern: use dataset question to initialize game state.
         
         Returns: (message_dict, updated_state)
         """
         if 'game' not in state:
-            # Initialize new game for this rollout
-            game = self.game_generator.generate_mixed_scenario()
+            # Initialize game from the dataset question (board state)
+            # state['answer'] contains the optimal move from the dataset
+            game = self._parse_board_state_from_question(state.get('answer', '[a1]'))  # Fallback if no answer
             state['game'] = game
             state['total_reward'] = 0
             state['moves_made'] = 0
+            state['optimal_move'] = state.get('answer', '[a1]')  # Store the dataset's optimal move
             
-            board_state = game.render()
+            # The question already contains the board state and instructions
+            # So we don't need to generate initial content - just indicate the game is ready
             return {
-                'role': 'system', 
-                'content': f"New battleship game started!\n\n{board_state}\nMake your first move:"
+                'role': 'user', 
+                'content': "Make your move:"
             }, state
         
         game = state['game']
@@ -70,13 +81,13 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         parsed_move = self.parser.parse_answer(last_message)
         if not parsed_move:
             return {
-                'role': 'system',
+                'role': 'user',
                 'content': "Invalid move format! Please respond with coordinates in brackets like [d6]. Try again:"
             }, state
         
         if parsed_move not in game.get_valid_moves():
             return {
-                'role': 'system', 
+                'role': 'user', 
                 'content': f"Invalid move {parsed_move}! That square is already revealed. Choose an unrevealed square. Try again:"
             }, state
         
@@ -101,6 +112,11 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
             move_reward = -1
             response_parts.append(f"💧 Miss at {parsed_move}")
         
+        # Bonus for using the optimal move from dataset
+        if parsed_move == state.get('optimal_move', '').strip('[]'):
+            move_reward += 5
+            response_parts.append("⭐ Great choice!")
+        
         # Win bonus
         if game_over:
             move_reward += 100
@@ -114,12 +130,22 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         # Prepare response
         response_parts.append(f"\n{observation}")
         if not game_over:
-            response_parts.append("Your next move:")
+            response_parts.append("Your move:")
         
         return {
-            'role': 'system',
+            'role': 'user',
             'content': '\n'.join(response_parts)
         }, state
+    
+    def _parse_board_state_from_question(self, optimal_move_hint):
+        """
+        Parse board state from the dataset question text.
+        For now, generate a random game since parsing the full board state is complex.
+        TODO: Implement proper board state parsing from the text.
+        """
+        # This is a simplified version - ideally we'd parse the actual board state
+        # from the question text, but that's quite complex
+        return self.game_generator.generate_mixed_scenario()
     
     def get_parser(self):
         return self.parser

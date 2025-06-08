@@ -16,44 +16,18 @@ class BattleshipSingleTurnEnv(vf.SingleTurnEnv):
     """
     
     def __init__(self):
-        # Initialize parent with None dataset since we generate problems dynamically
+        # Load the same dataset we used for SFT training
+        from datasets import load_dataset
+        dataset = load_dataset('ljt019/battleship-rlvr-qwen3-dataset', split='train')
+        
+        # Initialize parent
         super().__init__(
-            dataset=None,
+            dataset=dataset,
             system_prompt="You are an expert battleship player. Given a board state, choose the best next move.",
             parser=BattleshipAnswerParser(),
             rubric=None  # We handle rewards in check_answer
         )
         self.game = None
-        
-    def get_problem(self) -> str:
-        """
-        Generate a battleship problem (game state).
-        Returns the board state as a string for the model to analyze.
-        """
-        # Create new game and play some random moves to get interesting state
-        self.game = BattleshipGame()
-        
-        # Play 0-30 random moves to create diverse game states
-        num_moves = random.randint(0, 30)
-        for _ in range(num_moves):
-            if self.game.game_over or not self.game.get_valid_moves():
-                break
-            move = random.choice(self.game.get_valid_moves())
-            self.game.step(move)
-        
-        # If game ended, restart with fewer moves
-        if self.game.game_over:
-            self.game = BattleshipGame()
-            num_moves = random.randint(0, 15)
-            for _ in range(num_moves):
-                if not self.game.get_valid_moves():
-                    break
-                move = random.choice(self.game.get_valid_moves())
-                self.game.step(move)
-        
-        # Format as question
-        board_state = self.game.render()
-        return f"Given this battleship board state, what is the best next move?\n\n{board_state}"
     
     def check_answer(self, problem: str, answer: str) -> Tuple[bool, Dict[str, Any]]:
         """

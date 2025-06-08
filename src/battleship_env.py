@@ -1,10 +1,14 @@
 import random
+import logging
 from typing import Dict, List, Tuple, Any, Optional
 import verifiers as vf
 from datasets import load_dataset, Dataset
 from src.battleship_game import BattleshipGame
 from src.parser import BattleshipAnswerParser
 
+# Set up detailed logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
     """
@@ -40,14 +44,20 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
             rubric=vf.Rubric(),
         )
         self.game_generator = BattleshipGameGenerator()
+        self.episode_count = 0
     
     def is_completed(self, messages, state, **kwargs):
         """Check if the game is completed (won or max turns reached)"""
+        logger.debug(f"is_completed called - messages length: {len(messages)}, state keys: {list(state.keys())}")
+        
         if 'game' not in state:
+            logger.debug("Game not initialized yet")
             return False
         
         game = state['game']
-        return game.game_over or len(messages) >= self.max_turns * 2  # *2 because model+env messages
+        completed = game.game_over or len(messages) >= self.max_turns * 2  # *2 because model+env messages
+        logger.debug(f"Game completed: {completed} (game_over: {game.game_over}, messages: {len(messages)}, max: {self.max_turns * 2})")
+        return completed
     
     def env_response(self, messages, state, **kwargs):
         """
@@ -56,7 +66,17 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         
         Returns: (message_dict, updated_state)
         """
+        self.episode_count += 1
+        logger.debug(f"\n=== ENV_RESPONSE CALL #{self.episode_count} ===")
+        logger.debug(f"Current messages count: {len(messages)}")
+        logger.debug(f"State keys: {list(state.keys())}")
+        
+        # Log the full conversation so far
+        for i, msg in enumerate(messages):
+            logger.debug(f"Message {i}: role='{msg['role']}', content='{msg['content'][:100]}{'...' if len(msg['content']) > 100 else ''}'")
+        
         if 'game' not in state:
+            logger.debug("INITIALIZING NEW GAME")
             # Initialize game from the dataset question (board state)
             game = self._parse_board_state_from_question(state.get('answer', '[a1]'))  # Fallback if no answer
             state['game'] = game
@@ -64,33 +84,52 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
             state['moves_made'] = 0
             state['optimal_move'] = state.get('answer', '[a1]')  # Store the dataset's optimal move
             
+            logger.debug(f"Game initialized, optimal_move: {state['optimal_move']}")
+            
             # Simple consistent initialization
-            return {
+            response_msg = {
                 'role': 'user', 
                 'content': "Make your move."
-            }, state
+            }
+            logger.debug(f"RETURNING INIT MESSAGE: {response_msg}")
+            return response_msg, state
         
+        logger.debug("PROCESSING PLAYER MOVE")
         game = state['game']
         
         # Get the last assistant message (model's move)
+        if not messages:
+            logger.error("No messages available!")
+            return {'role': 'user', 'content': "Error: No messages"}, state
+            
         last_message = messages[-1]['content']
+        logger.debug(f"Last message content: '{last_message}'")
         
         # Parse and execute the move
         parsed_move = self.parser.parse_answer(last_message)
+        logger.debug(f"Parsed move: '{parsed_move}'")
+        
         if not parsed_move:
-            return {
+            response_msg = {
                 'role': 'user',
                 'content': "Invalid format. Use [coordinate] like [a1]."
-            }, state
+            }
+            logger.debug(f"RETURNING INVALID FORMAT: {response_msg}")
+            return response_msg, state
         
         if parsed_move not in game.get_valid_moves():
-            return {
+            logger.debug(f"Invalid move - valid moves: {game.get_valid_moves()[:10]}...")  # Log first 10
+            response_msg = {
                 'role': 'user', 
                 'content': "Invalid move. Square already revealed."
-            }, state
+            }
+            logger.debug(f"RETURNING INVALID MOVE: {response_msg}")
+            return response_msg, state
         
         # Execute the move
+        logger.debug(f"Executing move: {parsed_move}")
         observation, hit, sunk, game_over, invalid = game.step(parsed_move)
+        logger.debug(f"Move result: hit={hit}, sunk={sunk}, game_over={game_over}, invalid={invalid}")
         
         # Calculate reward for this move
         move_reward = 0
@@ -112,16 +151,20 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         # Bonus for using the optimal move from dataset
         if parsed_move == state.get('optimal_move', '').strip('[]'):
             move_reward += 5
+            logger.debug(f"Optimal move bonus applied!")
         
         # Win bonus
         if game_over:
             move_reward += 100
             response = "Hit and sunk! You win!"
+            logger.debug("GAME WON!")
         
         # Update state
         state['total_reward'] = state.get('total_reward', 0) + move_reward
         state['moves_made'] = state.get('moves_made', 0) + 1
         state['last_move_reward'] = move_reward
+        
+        logger.debug(f"Move reward: {move_reward}, total_reward: {state['total_reward']}")
         
         # Ultra-simple response format to avoid tokenization issues
         if game_over:
@@ -129,10 +172,16 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         else:
             final_response = response + " Next move."
         
-        return {
+        response_msg = {
             'role': 'user',
             'content': final_response
-        }, state
+        }
+        
+        logger.debug(f"RETURNING GAME RESPONSE: {response_msg}")
+        logger.debug(f"Updated state keys: {list(state.keys())}")
+        logger.debug("=== END ENV_RESPONSE ===\n")
+        
+        return response_msg, state
     
     def _parse_board_state_from_question(self, optimal_move_hint):
         """
@@ -140,6 +189,7 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         For now, generate a random game since parsing the full board state is complex.
         TODO: Implement proper board state parsing from the text.
         """
+        logger.debug(f"Generating game with optimal_move_hint: {optimal_move_hint}")
         # This is a simplified version - ideally we'd parse the actual board state
         # from the question text, but that's quite complex
         return self.game_generator.generate_mixed_scenario()

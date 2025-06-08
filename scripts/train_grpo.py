@@ -8,7 +8,7 @@ from src.battleship_env import BattleshipMultiTurnEnv
 def main():
     model, tokenizer = vf.get_model_and_tokenizer("ljt019/Qwen3-1.7B-battleship-sft")
 
-    env = BattleshipMultiTurnEnv(max_turns=50)
+    env = BattleshipMultiTurnEnv(max_turns=10)
     
     run_name = "battleship-grpo-qwen3"
     training_args = vf.grpo_defaults(run_name=run_name)

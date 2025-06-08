@@ -5,127 +5,133 @@ from src.battleship_game import BattleshipGame
 from src.parser import BattleshipAnswerParser
 
 
-class BattleshipSingleTurnEnv(vf.SingleTurnEnv):
+class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
     """
-    Single turn battleship environment for RLVR training.
+    Multi-turn battleship environment for GRPO training.
     
     Each episode:
     1. Generate a random battleship game state
-    2. Ask model for next move
-    3. Execute move and provide verifiable reward
+    2. Model makes moves, environment responds with hit/miss/sunk
+    3. Continue until game is won or max turns reached
+    4. Provide rewards based on game performance
     """
     
-    def __init__(self):
-        # Load the same dataset we used for SFT training
-        from datasets import load_dataset
-        dataset = load_dataset('ljt019/battleship-rlvr-qwen3-dataset', split='train')
-        
-        # Our dataset has 'prompt' and 'completion' columns, but verifiers expects 'question' and 'answer'
-        # Also, our data is in chat format but we need to extract the string content
-        def process_example(example):
-            # Extract question from chat format
-            question_content = example['prompt'][0]['content']  # Get the user message content
-            
-            # Extract answer from chat format
-            answer_content = example['completion'][0]['content']  # Get the assistant message content
-            
-            return {
-                'question': question_content,
-                'answer': answer_content
-            }
-        
-        dataset = dataset.map(process_example)
-        
-        # Initialize parent
+    def __init__(self, max_turns: int = 50):
+        # Initialize without dataset since we generate games dynamically
         super().__init__(
-            dataset=dataset,
-            system_prompt="You are an expert battleship player. Given a board state, choose the best next move.",
+            max_turns=max_turns,
+            system_prompt="You are an expert battleship player. Given a board state, choose the best next move by responding with coordinates in brackets like [d6].",
             parser=BattleshipAnswerParser(),
-            rubric=None  # We handle rewards in check_answer
+            rubric=vf.Rubric()
         )
-        self.game = None
+        self.game_generator = BattleshipGameGenerator()
     
-    def check_answer(self, problem: str, answer: str) -> Tuple[bool, Dict[str, Any]]:
+    def is_completed(self, messages, state, **kwargs):
+        """Check if the game is completed (won or max turns reached)"""
+        if 'game' not in state:
+            return False
+        
+        game = state['game']
+        return game.game_over or len(messages) >= self.max_turns * 2  # *2 because model+env messages
+    
+    def env_response(self, messages, state, **kwargs):
         """
-        Execute the proposed move and return verifiable reward.
+        Process the model's move and return environment response.
         
-        Args:
-            problem: The game state (unused, we use self.game)
-            answer: Model's proposed move (e.g., "d6")
-        
-        Returns:
-            (is_correct, info_dict) where is_correct is based on reward
+        Returns: (message_dict, updated_state)
         """
-        if not self.game:
-            return False, {"error": "No active game"}
+        if 'game' not in state:
+            # Initialize new game
+            game = self.game_generator.generate_mixed_scenario()
+            state['game'] = game
+            state['total_reward'] = 0
+            state['moves_made'] = 0
+            
+            # Return initial board state
+            board_state = game.render()
+            return {
+                'role': 'system', 
+                'content': f"New battleship game started!\n\n{board_state}\nMake your first move:"
+            }, state
         
-        # Parse the answer
-        parsed_move = self.parser.parse_answer(answer)
+        game = state['game']
+        
+        # Get the last assistant message (model's move)
+        last_message = messages[-1]['content']
+        
+        # Parse and execute the move
+        parsed_move = self.parser.parse_answer(last_message)
         if not parsed_move:
-            return False, {
-                "error": "Invalid format",
-                "reward": -5,
-                "move": answer,
-                "reason": "Could not parse move from answer"
-            }
+            return {
+                'role': 'system',
+                'content': "Invalid move format! Please respond with coordinates in brackets like [d6]. Try again:"
+            }, state
         
-        # Check if move is valid
-        if parsed_move not in self.game.get_valid_moves():
-            return False, {
-                "error": "Invalid move", 
-                "reward": -5,
-                "move": parsed_move,
-                "reason": "Move not in valid moves list"
-            }
+        if parsed_move not in game.get_valid_moves():
+            return {
+                'role': 'system', 
+                'content': f"Invalid move {parsed_move}! That square is already revealed. Choose an unrevealed square. Try again:"
+            }, state
         
         # Execute the move
-        observation, hit, sunk, game_over, invalid = self.game.step(parsed_move)
+        observation, hit, sunk, game_over, invalid = game.step(parsed_move)
         
-        # Calculate reward
-        reward = 0
-        reason = []
+        # Calculate reward for this move
+        move_reward = 0
+        response_parts = []
         
         if invalid:
-            reward = -5
-            reason.append("Invalid move")
+            move_reward = -5
+            response_parts.append("❌ Invalid move!")
         elif hit:
             if sunk:
-                reward = 10  # Bonus for sinking ship
-                reason.append(f"Hit and sunk ship!")
+                move_reward = 10
+                response_parts.append(f"🎯 HIT and SUNK! Great shot at {parsed_move}!")
             else:
-                reward = 1   # Standard hit
-                reason.append("Hit!")
+                move_reward = 1
+                response_parts.append(f"🎯 HIT at {parsed_move}!")
         else:
-            reward = -1  # Miss penalty
-            reason.append("Miss")
+            move_reward = -1
+            response_parts.append(f"💧 Miss at {parsed_move}")
         
         # Win bonus
         if game_over:
-            reward += 100
-            reason.append("Game won!")
+            move_reward += 100
+            response_parts.append("🏆 GAME WON! All ships destroyed!")
         
-        # Consider "correct" if reward > 0 (hits are good)
-        is_correct = reward > 0
+        # Update state
+        state['total_reward'] += move_reward
+        state['moves_made'] += 1
+        state['last_move_reward'] = move_reward
         
-        info = {
-            "reward": reward,
-            "hit": hit,
-            "sunk": sunk, 
-            "game_over": game_over,
-            "move": parsed_move,
-            "reason": "; ".join(reason),
-            "board_after": observation
-        }
+        # Prepare response
+        response_parts.append(f"\n{observation}")
+        if not game_over:
+            response_parts.append("Your next move:")
         
-        return is_correct, info
+        return {
+            'role': 'system',
+            'content': '\n'.join(response_parts)
+        }, state
     
-    def get_parser(self) -> BattleshipAnswerParser:
-        """Return the parser for this environment"""
+    def get_parser(self):
         return self.parser
 
 
 class BattleshipGameGenerator:
     """Generate diverse battleship game states for training"""
+    
+    @staticmethod
+    def generate_mixed_scenario() -> BattleshipGame:
+        """Generate a random game scenario with mixed stages"""
+        scenario_type = random.choice(['early', 'mid', 'targeting'])
+        
+        if scenario_type == 'early':
+            return BattleshipGameGenerator.generate_early_game()
+        elif scenario_type == 'mid':
+            return BattleshipGameGenerator.generate_mid_game()
+        else:
+            return BattleshipGameGenerator.generate_targeting_scenario()
     
     @staticmethod
     def generate_early_game() -> BattleshipGame:

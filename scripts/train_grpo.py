@@ -3,12 +3,12 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 import verifiers as vf
-from src.battleship_env import BattleshipSingleTurnEnv
+from src.battleship_env import BattleshipMultiTurnEnv
 
 def main():
     model, tokenizer = vf.get_model_and_tokenizer("ljt019/Qwen3-1.7B-battleship-sft")
 
-    env = BattleshipSingleTurnEnv()
+    env = BattleshipMultiTurnEnv(max_turns=50)
     
     run_name = "battleship-grpo-qwen3"
     training_args = vf.grpo_defaults(run_name=run_name)

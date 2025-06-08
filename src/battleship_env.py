@@ -6,254 +6,173 @@ from datasets import load_dataset, Dataset
 from src.battleship_game import BattleshipGame
 from src.parser import BattleshipAnswerParser
 
-# Set up detailed logging
-logging.basicConfig(level=logging.DEBUG)
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
     """
-    Multi-turn battleship environment for GRPO training.
+    Multi-turn battleship environment following TextArenaEnv pattern.
     
-    Each episode:
-    1. Generate a random battleship game state
-    2. Model makes moves, environment responds with hit/miss/sunk
-    3. Continue until game is won or max turns reached
-    4. Provide rewards based on game performance
+    Key principles:
+    1. Deterministic game states based on dataset
+    2. Proper state management with reuse
+    3. Clean separation of concerns
     """
     
-    def __init__(self, max_turns: int = 50):
-        # Load our actual battleship dataset - each row will be a different starting scenario
+    def __init__(self, max_turns: int = 10):
+        # Load dataset and process it properly
         dataset = load_dataset('ljt019/battleship-rlvr-qwen3-dataset', split='train')
         
-        # Process dataset format for verifiers compatibility
+        # Convert to the format expected by MultiTurnEnv
         def process_example(example):
             question_content = example['prompt'][0]['content']
             answer_content = example['completion'][0]['content']
             return {
                 'question': question_content,
-                'answer': answer_content
+                'answer': answer_content  # This will be the optimal move
             }
         
         dataset = dataset.map(process_example)
         
+        # Create eval dataset (use a subset)
+        eval_dataset = dataset.select(range(min(100, len(dataset))))
+        
         super().__init__(
             max_turns=max_turns,
             dataset=dataset,
+            eval_dataset=eval_dataset,
             system_prompt="You are an expert battleship player. Given a board state, choose the best next move by responding with coordinates in brackets like [d6].",
             parser=BattleshipAnswerParser(),
             rubric=vf.Rubric(),
         )
-        self.game_generator = BattleshipGameGenerator()
-        self.episode_count = 0
     
-    def is_completed(self, messages, state, **kwargs):
-        """Check if the game is completed (won or max turns reached)"""
-        logger.debug(f"is_completed called - messages length: {len(messages)}, state keys: {list(state.keys())}")
-        
-        if 'game' not in state:
-            logger.debug("Game not initialized yet")
-            return False
-        
-        game = state['game']
-        completed = game.game_over or len(messages) >= self.max_turns * 2  # *2 because model+env messages
-        logger.debug(f"Game completed: {completed} (game_over: {game.game_over}, messages: {len(messages)}, max: {self.max_turns * 2})")
-        return completed
+    def is_completed(self, messages: List[Dict[str, Any]], state: Dict[str, Any], **kwargs) -> bool:
+        """Check if the game is completed"""
+        if 'is_finished' in state and state['is_finished']:
+            # Clean up the game state
+            if 'game' in state:
+                state.pop('game')
+            return True
+        return False
     
-    def env_response(self, messages, state, **kwargs):
+    def env_response(self, messages: List[Dict[str, Any]], state: Dict[str, Any], **kwargs) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Process the model's move and return environment response.
-        Using ultra-simple, consistent response format to avoid tokenization issues.
-        
-        Returns: (message_dict, updated_state)
+        Following TextArenaEnv pattern exactly.
         """
-        self.episode_count += 1
-        logger.debug(f"\n=== ENV_RESPONSE CALL #{self.episode_count} ===")
-        logger.debug(f"Current messages count: {len(messages)}")
-        logger.debug(f"State keys: {list(state.keys())}")
-        
-        # Log the full conversation so far
-        for i, msg in enumerate(messages):
-            logger.debug(f"Message {i}: role='{msg['role']}', content='{msg['content'][:100]}{'...' if len(msg['content']) > 100 else ''}'")
-        
+        # Initialize game if not exists (deterministic based on state['answer'])
         if 'game' not in state:
-            logger.debug("INITIALIZING NEW GAME")
-            # Initialize game from the dataset question (board state)
-            game = self._parse_board_state_from_question(state.get('answer', '[a1]'))  # Fallback if no answer
+            # Create a deterministic game based on the optimal answer
+            game = self._create_deterministic_game(state.get('answer', '[a1]'))
             state['game'] = game
             state['total_reward'] = 0
             state['moves_made'] = 0
-            state['optimal_move'] = state.get('answer', '[a1]')  # Store the dataset's optimal move
+            state['is_finished'] = False
             
-            logger.debug(f"Game initialized, optimal_move: {state['optimal_move']}")
-            
-            # Simple consistent initialization
-            response_msg = {
-                'role': 'user', 
-                'content': "Make your move."
-            }
-            logger.debug(f"RETURNING INIT MESSAGE: {response_msg}")
-            return response_msg, state
+            # Return initial prompt (this happens after the question is asked)
+            return {
+                'role': 'user',
+                'content': 'Make your move.'
+            }, state
         
-        logger.debug("PROCESSING PLAYER MOVE")
+        # Game already exists, process the move
         game = state['game']
         
-        # Get the last assistant message (model's move)
-        if not messages:
-            logger.error("No messages available!")
-            return {'role': 'user', 'content': "Error: No messages"}, state
-            
+        # Parse the last assistant message
         last_message = messages[-1]['content']
-        logger.debug(f"Last message content: '{last_message}'")
-        
-        # Parse and execute the move
         parsed_move = self.parser.parse_answer(last_message)
-        logger.debug(f"Parsed move: '{parsed_move}'")
         
         if not parsed_move:
-            response_msg = {
+            return {
                 'role': 'user',
-                'content': "Invalid format. Use [coordinate] like [a1]."
-            }
-            logger.debug(f"RETURNING INVALID FORMAT: {response_msg}")
-            return response_msg, state
+                'content': 'Invalid format. Use [coordinate] like [a1].'
+            }, state
         
+        # Check if move is valid
         if parsed_move not in game.get_valid_moves():
-            logger.debug(f"Invalid move - valid moves: {game.get_valid_moves()[:10]}...")  # Log first 10
-            response_msg = {
-                'role': 'user', 
-                'content': "Invalid move. Square already revealed."
-            }
-            logger.debug(f"RETURNING INVALID MOVE: {response_msg}")
-            return response_msg, state
+            return {
+                'role': 'user',
+                'content': 'Invalid move. Square already revealed.'
+            }, state
         
         # Execute the move
-        logger.debug(f"Executing move: {parsed_move}")
         observation, hit, sunk, game_over, invalid = game.step(parsed_move)
-        logger.debug(f"Move result: hit={hit}, sunk={sunk}, game_over={game_over}, invalid={invalid}")
+        state['moves_made'] = state.get('moves_made', 0) + 1
         
-        # Calculate reward for this move
+        # Calculate reward
         move_reward = 0
-        
         if invalid:
             move_reward = -5
-            response = "Invalid."
+            feedback = "Invalid."
         elif hit:
             if sunk:
                 move_reward = 10
-                response = "Hit and sunk!"
+                feedback = "Hit and sunk!"
             else:
                 move_reward = 1
-                response = "Hit!"
+                feedback = "Hit!"
         else:
             move_reward = -1
-            response = "Miss."
+            feedback = "Miss."
         
-        # Bonus for using the optimal move from dataset
-        if parsed_move == state.get('optimal_move', '').strip('[]'):
+        # Check if optimal move
+        optimal_move = state.get('answer', '').strip('[]')
+        if parsed_move == optimal_move:
             move_reward += 5
-            logger.debug(f"Optimal move bonus applied!")
         
-        # Win bonus
+        # Win condition
         if game_over:
             move_reward += 100
-            response = "Hit and sunk! You win!"
-            logger.debug("GAME WON!")
+            feedback = "Hit and sunk! You win!"
+            state['is_finished'] = True
         
-        # Update state
+        # Max turns reached
+        elif state['moves_made'] >= self.max_turns:
+            state['is_finished'] = True
+            feedback += " Game over - max turns reached."
+        
         state['total_reward'] = state.get('total_reward', 0) + move_reward
-        state['moves_made'] = state.get('moves_made', 0) + 1
         state['last_move_reward'] = move_reward
         
-        logger.debug(f"Move reward: {move_reward}, total_reward: {state['total_reward']}")
-        
-        # Ultra-simple response format to avoid tokenization issues
-        if game_over:
-            final_response = response
+        # Return response
+        if state['is_finished']:
+            env_message = {"role": "user", "content": feedback}
         else:
-            final_response = response + " Next move."
+            env_message = {"role": "user", "content": feedback + " Next move."}
         
-        response_msg = {
-            'role': 'user',
-            'content': final_response
-        }
-        
-        logger.debug(f"RETURNING GAME RESPONSE: {response_msg}")
-        logger.debug(f"Updated state keys: {list(state.keys())}")
-        logger.debug("=== END ENV_RESPONSE ===\n")
-        
-        return response_msg, state
+        return env_message, state
     
-    def _parse_board_state_from_question(self, optimal_move_hint):
+    def _create_deterministic_game(self, optimal_answer: str) -> BattleshipGame:
         """
-        Parse board state from the dataset question text.
-        For now, generate a random game since parsing the full board state is complex.
-        TODO: Implement proper board state parsing from the text.
+        Create a deterministic game state based on the optimal answer.
+        This ensures the same dataset row always produces the same game.
         """
-        logger.debug(f"Generating game with optimal_move_hint: {optimal_move_hint}")
-        # This is a simplified version - ideally we'd parse the actual board state
-        # from the question text, but that's quite complex
-        return self.game_generator.generate_mixed_scenario()
+        # Extract coordinate from answer if it exists
+        try:
+            # Use the optimal answer as a seed for deterministic game generation
+            seed = hash(optimal_answer) % 10000
+            random.seed(seed)
+            
+            # Generate a game with some random moves already made
+            game = BattleshipGame()
+            
+            # Make some random moves to create an interesting mid-game state
+            num_moves = random.randint(0, 15)
+            for _ in range(num_moves):
+                valid_moves = game.get_valid_moves()
+                if not valid_moves:
+                    break
+                move = random.choice(valid_moves)
+                game.step(move)
+                if game.game_over:
+                    break
+            
+            return game
+            
+        except Exception as e:
+            logger.warning(f"Error creating deterministic game: {e}, using default")
+            return BattleshipGame()
     
     def get_parser(self):
-        return self.parser
-
-
-class BattleshipGameGenerator:
-    """Generate diverse battleship game states for training"""
-    
-    @staticmethod
-    def generate_mixed_scenario() -> BattleshipGame:
-        """Generate a random game scenario with mixed stages"""
-        scenario_type = random.choice(['early', 'mid', 'targeting'])
-        
-        if scenario_type == 'early':
-            return BattleshipGameGenerator.generate_early_game()
-        elif scenario_type == 'mid':
-            return BattleshipGameGenerator.generate_mid_game()
-        else:
-            return BattleshipGameGenerator.generate_targeting_scenario()
-    
-    @staticmethod
-    def generate_early_game() -> BattleshipGame:
-        """Generate early game state (0-10 moves)"""
-        game = BattleshipGame()
-        num_moves = random.randint(0, 10)
-        for _ in range(num_moves):
-            if not game.get_valid_moves():
-                break
-            move = random.choice(game.get_valid_moves())
-            game.step(move)
-        return game
-    
-    @staticmethod
-    def generate_mid_game() -> BattleshipGame:
-        """Generate mid game state (10-25 moves)"""
-        game = BattleshipGame()
-        num_moves = random.randint(10, 25)
-        for _ in range(num_moves):
-            if not game.get_valid_moves():
-                break
-            move = random.choice(game.get_valid_moves())
-            game.step(move)
-        return game
-    
-    @staticmethod
-    def generate_targeting_scenario() -> BattleshipGame:
-        """Generate a game state with hits for targeting practice"""
-        game = BattleshipGame()
-        
-        # Play moves until we get at least one hit
-        max_attempts = 50
-        attempts = 0
-        hits_found = 0
-        
-        while hits_found == 0 and attempts < max_attempts:
-            if not game.get_valid_moves():
-                break
-            move = random.choice(game.get_valid_moves())
-            _, hit, _, _, _ = game.step(move)
-            if hit:
-                hits_found += 1
-            attempts += 1
-        
-        return game 
+        return self.parser 

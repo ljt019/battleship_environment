@@ -61,11 +61,6 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         Process the model's move and return environment response.
         Following TextArenaEnv pattern exactly.
         """
-        # Debug logging
-        logger.info(f"[DEBUG] env_response called with {len(messages)} messages")
-        logger.info(f"[DEBUG] Last message: {messages[-1] if messages else 'None'}")
-        logger.info(f"[DEBUG] State has game: {'game' in state}")
-        
         # Initialize game if not exists (deterministic based on state['answer'])
         if 'game' not in state:
             # Create a deterministic game based on the optimal answer
@@ -74,7 +69,6 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
             state['total_reward'] = 0
             state['moves_made'] = 0
             state['is_finished'] = False
-            logger.info(f"[DEBUG] Initialized new game for answer: {state.get('answer', '[a1]')}")
         
         # Only proceed if we have an assistant message to process
         if not messages or messages[-1]['role'] != 'assistant':
@@ -83,7 +77,6 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
                 'role': 'user',
                 'content': 'Make your move.'
             }
-            logger.info(f"[DEBUG] Returning initial prompt: {response}")
             return response, state
         
         # Game exists, process the move
@@ -93,14 +86,11 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         last_message = messages[-1]['content']
         parsed_move = self.parser.parse_answer(last_message)
         
-        logger.info(f"[DEBUG] Parsed move: {parsed_move} from message: {last_message}")
-        
         if not parsed_move:
             response = {
                 'role': 'user',
                 'content': 'Invalid format. Use [coordinate] like [a1].'
             }
-            logger.info(f"[DEBUG] Invalid move format, returning: {response}")
             return response, state
         
         # Check if move is valid
@@ -109,14 +99,11 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
                 'role': 'user',
                 'content': 'Invalid move. Square already revealed.'
             }
-            logger.info(f"[DEBUG] Invalid move (already revealed), returning: {response}")
             return response, state
         
         # Execute the move
         observation, hit, sunk, game_over, invalid = game.step(parsed_move)
         state['moves_made'] = state.get('moves_made', 0) + 1
-        
-        logger.info(f"[DEBUG] Move result: hit={hit}, sunk={sunk}, game_over={game_over}, invalid={invalid}")
         
         # Calculate reward
         move_reward = 0
@@ -159,7 +146,6 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         else:
             env_message = {"role": "user", "content": feedback + " Next move."}
         
-        logger.info(f"[DEBUG] Final env response: {env_message}")
         return env_message, state
     
     def _create_deterministic_game(self, optimal_answer: str) -> BattleshipGame:
@@ -168,48 +154,98 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         This ensures the same dataset row always produces the same game.
         """
         try:
-            # Use a local Random instance to avoid global state issues
-            import random as random_module
-            
             # Create deterministic seed from the optimal answer
             seed = hash(optimal_answer) % 1000000
-            local_random = random_module.Random(seed)
             
-            # Temporarily replace global random with our local instance
-            original_choice = random_module.choice
-            original_randint = random_module.randint
-            random_module.choice = local_random.choice
-            random_module.randint = local_random.randint
+            # Create game with deterministic ship placement
+            game = BattleshipGame()
             
-            try:
-                # Generate a game with deterministic ship placement
-                game = BattleshipGame()
-                
-                # Make a deterministic number of moves based on the seed
-                num_moves = seed % 20  # 0-19 moves, deterministic based on seed
-                
-                for i in range(num_moves):
-                    valid_moves = game.get_valid_moves()
-                    if not valid_moves:
-                        break
-                        
-                    # Use deterministic selection instead of random.choice
-                    move_index = (seed + i) % len(valid_moves)
-                    move = valid_moves[move_index]
+            # Override the game's ships with a deterministic placement
+            game.ships = self._create_deterministic_ships(seed, game.board_size, game.ship_sizes)
+            
+            # Make a deterministic number of moves based on the seed
+            num_moves = seed % 20  # 0-19 moves, deterministic based on seed
+            
+            for i in range(num_moves):
+                valid_moves = game.get_valid_moves()
+                if not valid_moves:
+                    break
                     
-                    game.step(move)
-                    if game.game_over:
-                        break
+                # Use deterministic selection instead of random.choice
+                move_index = (seed + i) % len(valid_moves)
+                move = valid_moves[move_index]
                 
-                return game
-            finally:
-                # Restore original random functions
-                random_module.choice = original_choice
-                random_module.randint = original_randint
+                game.step(move)
+                if game.game_over:
+                    break
+            
+            return game
             
         except Exception as e:
             logger.warning(f"Error creating deterministic game: {e}, using default")
             return BattleshipGame()
+    
+    def _create_deterministic_ships(self, seed: int, board_size: int, ship_sizes: list) -> list:
+        """
+        Create deterministic ship placements without using any random calls.
+        """
+        ships = []
+        cols = [chr(ord('a') + i) for i in range(board_size)]
+        rows = [str(r) for r in range(1, board_size + 1)]
+        
+        # Create all possible coordinates
+        all_coords = [f"{c}{r}" for c in cols for r in rows]
+        
+        # Track occupied coordinates
+        occupied = set()
+        
+        for ship_idx, size in enumerate(ship_sizes):
+            placed = False
+            attempt = 0
+            
+            while not placed and attempt < 1000:  # Safety limit
+                # Deterministic placement based on seed, ship_idx, and attempt
+                placement_seed = (seed + ship_idx * 1000 + attempt) % 1000000
+                
+                # Choose orientation deterministically
+                horizontal = (placement_seed % 2) == 0
+                
+                if horizontal:
+                    # Place horizontally
+                    max_col_start = board_size - size
+                    if max_col_start >= 0:
+                        col_start = placement_seed % (max_col_start + 1)
+                        row_idx = (placement_seed // (max_col_start + 1)) % board_size
+                        
+                        coords = [f"{cols[col_start + i]}{rows[row_idx]}" for i in range(size)]
+                else:
+                    # Place vertically
+                    max_row_start = board_size - size
+                    if max_row_start >= 0:
+                        row_start = placement_seed % (max_row_start + 1)
+                        col_idx = (placement_seed // (max_row_start + 1)) % board_size
+                        
+                        coords = [f"{cols[col_idx]}{rows[row_start + i]}" for i in range(size)]
+                
+                # Check for overlap
+                if not any(coord in occupied for coord in coords):
+                    ships.append({"coords": coords, "hits": set()})
+                    occupied.update(coords)
+                    placed = True
+                
+                attempt += 1
+            
+            if not placed:
+                # Fallback: place in first available space
+                logger.warning(f"Could not place ship {ship_idx} deterministically, using fallback")
+                for i in range(len(all_coords) - size + 1):
+                    coords = all_coords[i:i+size]
+                    if not any(coord in occupied for coord in coords):
+                        ships.append({"coords": coords, "hits": set()})
+                        occupied.update(coords)
+                        break
+        
+        return ships
     
     def get_parser(self):
         return self.parser 

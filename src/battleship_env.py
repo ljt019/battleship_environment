@@ -69,17 +69,10 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
             state['total_reward'] = 0
             state['moves_made'] = 0
             state['is_finished'] = False
-        
-        # Only proceed if we have an assistant message to process
-        if not messages or messages[-1]['role'] != 'assistant':
-            # This should not happen in normal flow, but handle gracefully
-            response = {
-                'role': 'user',
-                'content': 'Make your move.'
-            }
-            return response, state
-        
-        # Game exists, process the move
+            # Return initial prompt
+            return { 'role': 'user', 'content': 'Make your move.' }, state
+
+        # Game already exists, process the move
         game = state['game']
         
         # Parse the last assistant message

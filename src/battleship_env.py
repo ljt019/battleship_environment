@@ -18,9 +18,16 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
     """
     
     def __init__(self, max_turns: int = 50):
+        # Create minimal dummy dataset to satisfy library requirement
+        dummy_data = {
+            'question': ['Start game'],
+            'answer': ['[a1]']
+        }
+        dummy_dataset = Dataset.from_dict(dummy_data)
+        
         super().__init__(
             max_turns=max_turns,
-            dataset=None,  # No dataset needed for dynamic environments
+            dataset=dummy_dataset,  # Required by library, but not used in our MultiTurn flow
             system_prompt="You are an expert battleship player. Given a board state, choose the best next move by responding with coordinates in brackets like [d6].",
             parser=BattleshipAnswerParser(),
             rubric=vf.Rubric()

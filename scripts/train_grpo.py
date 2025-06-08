@@ -31,5 +31,12 @@ def main():
     
     trainer.train()
 
+    # Auto-shutdown to save GPU costs
+    print("Training complete! Shutting down in 60 seconds...")
+    import time
+    import os
+    time.sleep(60)  # Give time to see the completion message
+    os.system("shutdown -h now")
+
 if __name__ == "__main__":
     main()

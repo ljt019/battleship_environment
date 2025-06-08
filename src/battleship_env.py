@@ -1,6 +1,7 @@
 import random
 from typing import Dict, List, Tuple, Any, Optional
 import verifiers as vf
+from datasets import load_dataset, Dataset
 from src.battleship_game import BattleshipGame
 from src.parser import BattleshipAnswerParser
 
@@ -17,9 +18,9 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
     """
     
     def __init__(self, max_turns: int = 50):
-        # Initialize without dataset since we generate games dynamically
         super().__init__(
             max_turns=max_turns,
+            dataset=None,  # No dataset needed for dynamic environments
             system_prompt="You are an expert battleship player. Given a board state, choose the best next move by responding with coordinates in brackets like [d6].",
             parser=BattleshipAnswerParser(),
             rubric=vf.Rubric()
@@ -41,13 +42,12 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         Returns: (message_dict, updated_state)
         """
         if 'game' not in state:
-            # Initialize new game
+            # Initialize new game for this rollout
             game = self.game_generator.generate_mixed_scenario()
             state['game'] = game
             state['total_reward'] = 0
             state['moves_made'] = 0
             
-            # Return initial board state
             board_state = game.render()
             return {
                 'role': 'system', 
@@ -100,8 +100,8 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
             response_parts.append("🏆 GAME WON! All ships destroyed!")
         
         # Update state
-        state['total_reward'] += move_reward
-        state['moves_made'] += 1
+        state['total_reward'] = state.get('total_reward', 0) + move_reward
+        state['moves_made'] = state.get('moves_made', 0) + 1
         state['last_move_reward'] = move_reward
         
         # Prepare response

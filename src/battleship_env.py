@@ -52,24 +52,22 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
     def env_response(self, messages, state, **kwargs):
         """
         Process the model's move and return environment response.
-        Following TextArenaEnv pattern: use dataset question to initialize game state.
+        Using ultra-simple, consistent response format to avoid tokenization issues.
         
         Returns: (message_dict, updated_state)
         """
         if 'game' not in state:
             # Initialize game from the dataset question (board state)
-            # state['answer'] contains the optimal move from the dataset
             game = self._parse_board_state_from_question(state.get('answer', '[a1]'))  # Fallback if no answer
             state['game'] = game
             state['total_reward'] = 0
             state['moves_made'] = 0
             state['optimal_move'] = state.get('answer', '[a1]')  # Store the dataset's optimal move
             
-            # The question already contains the board state and instructions
-            # So we don't need to generate initial content - just indicate the game is ready
+            # Simple consistent initialization
             return {
                 'role': 'user', 
-                'content': "Make your move:"
+                'content': "Make your move."
             }, state
         
         game = state['game']
@@ -82,13 +80,13 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         if not parsed_move:
             return {
                 'role': 'user',
-                'content': "Invalid move format! Please respond with coordinates in brackets like [d6]. Try again:"
+                'content': "Invalid format. Use [coordinate] like [a1]."
             }, state
         
         if parsed_move not in game.get_valid_moves():
             return {
                 'role': 'user', 
-                'content': f"Invalid move {parsed_move}! That square is already revealed. Choose an unrevealed square. Try again:"
+                'content': "Invalid move. Square already revealed."
             }, state
         
         # Execute the move
@@ -96,46 +94,44 @@ class BattleshipMultiTurnEnv(vf.MultiTurnEnv):
         
         # Calculate reward for this move
         move_reward = 0
-        response_parts = []
         
         if invalid:
             move_reward = -5
-            response_parts.append("Invalid move!")
+            response = "Invalid."
         elif hit:
             if sunk:
                 move_reward = 10
-                response_parts.append(f"HIT and SUNK! Great shot at {parsed_move}!")
+                response = "Hit and sunk!"
             else:
                 move_reward = 1
-                response_parts.append(f"HIT at {parsed_move}!")
+                response = "Hit!"
         else:
             move_reward = -1
-            response_parts.append(f"Miss at {parsed_move}")
+            response = "Miss."
         
         # Bonus for using the optimal move from dataset
         if parsed_move == state.get('optimal_move', '').strip('[]'):
             move_reward += 5
-            response_parts.append("Great choice!")
         
         # Win bonus
         if game_over:
             move_reward += 100
-            response_parts.append("GAME WON! All ships destroyed!")
+            response = "Hit and sunk! You win!"
         
         # Update state
         state['total_reward'] = state.get('total_reward', 0) + move_reward
         state['moves_made'] = state.get('moves_made', 0) + 1
         state['last_move_reward'] = move_reward
         
-        # Use the same board representation that worked perfectly in SFT
+        # Ultra-simple response format to avoid tokenization issues
         if game_over:
-            response_content = f"{response_parts[0]} {response_parts[-1]}"
+            final_response = response
         else:
-            response_content = f"{response_parts[0]}\n\n{observation}\n\nYour next move:"
+            final_response = response + " Next move."
         
         return {
             'role': 'user',
-            'content': response_content
+            'content': final_response
         }, state
     
     def _parse_board_state_from_question(self, optimal_move_hint):

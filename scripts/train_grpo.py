@@ -13,42 +13,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class DebugTokenizer:
-    """Wrapper to debug tokenization issues"""
-    def __init__(self, tokenizer):
-        self.tokenizer = tokenizer
-        self.call_count = 0
-    
-    def __getattr__(self, name):
-        return getattr(self.tokenizer, name)
-    
-    def apply_chat_template(self, messages, tokenize=True, **kwargs):
-        self.call_count += 1
-        logger.debug(f"\n=== TOKENIZER CALL #{self.call_count} ===")
-        logger.debug(f"Messages count: {len(messages)}")
-        for i, msg in enumerate(messages):
-            content_preview = msg['content'][:100] + ('...' if len(msg['content']) > 100 else '')
-            logger.debug(f"  Message {i}: role='{msg['role']}', content='{content_preview}'")
-        
-        result = self.tokenizer.apply_chat_template(messages, tokenize=tokenize, **kwargs)
-        
-        if tokenize and isinstance(result, list):
-            logger.debug(f"Tokenized result length: {len(result)}")
-            logger.debug(f"First 20 tokens: {result[:20]}")
-            logger.debug(f"Last 20 tokens: {result[-20:]}")
-        else:
-            logger.debug(f"Text result length: {len(result) if isinstance(result, str) else 'N/A'}")
-        
-        logger.debug("=== END TOKENIZER CALL ===\n")
-        return result
-
 def main():
     model, tokenizer = vf.get_model_and_tokenizer("ljt019/Qwen3-1.7B-battleship-sft")
-    
-    # Wrap tokenizer with debug wrapper
-    debug_tokenizer = DebugTokenizer(tokenizer)
 
-    env = BattleshipMultiTurnEnv(max_turns=5)  # Reduced from 10 to avoid token limits
+    env = BattleshipMultiTurnEnv(max_turns=5)  
     
     run_name = "battleship-grpo-qwen3"
     training_args = vf.grpo_defaults(run_name=run_name)
@@ -66,7 +34,7 @@ def main():
     
     trainer = vf.GRPOTrainer(
         model=model,
-        processing_class=debug_tokenizer,
+        processing_class=tokenizer,
         env=env,
         args=training_args
     )

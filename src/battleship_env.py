@@ -20,6 +20,22 @@ class BattleshipSingleTurnEnv(vf.SingleTurnEnv):
         from datasets import load_dataset
         dataset = load_dataset('ljt019/battleship-rlvr-qwen3-dataset', split='train')
         
+        # Our dataset has 'prompt' and 'completion' columns, but verifiers expects 'question' and 'answer'
+        # Also, our data is in chat format but we need to extract the string content
+        def process_example(example):
+            # Extract question from chat format
+            question_content = example['prompt'][0]['content']  # Get the user message content
+            
+            # Extract answer from chat format
+            answer_content = example['completion'][0]['content']  # Get the assistant message content
+            
+            return {
+                'question': question_content,
+                'answer': answer_content
+            }
+        
+        dataset = dataset.map(process_example)
+        
         # Initialize parent
         super().__init__(
             dataset=dataset,

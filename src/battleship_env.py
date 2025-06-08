@@ -16,8 +16,14 @@ class BattleshipSingleTurnEnv(vf.SingleTurnEnv):
     """
     
     def __init__(self):
+        # Initialize parent with None dataset since we generate problems dynamically
+        super().__init__(
+            dataset=None,
+            system_prompt="You are an expert battleship player. Given a board state, choose the best next move.",
+            parser=BattleshipAnswerParser(),
+            rubric=None  # We handle rewards in check_answer
+        )
         self.game = None
-        self.parser = BattleshipAnswerParser()
         
     def get_problem(self) -> str:
         """

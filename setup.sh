@@ -42,3 +42,9 @@ export OPENAI_API_KEY=asdf
 echo "Adding uv to PATH..."
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 echo 'export OPENAI_API_KEY=asdf' >> ~/.bashrc
+
+# Source bashrc to make changes active in current session
+echo "Activating environment..."
+source ~/.bashrc
+
+echo "Setup complete! Environment is ready to use."

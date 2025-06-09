@@ -1,8 +1,10 @@
 import random
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List, Dict, Any, Union
 import re
+from copy import deepcopy
 
 from datasets import Dataset
+from openai import OpenAI
 
 from verifiers import MultiTurnEnv
 from verifiers.parsers import XMLParser
@@ -119,7 +121,7 @@ class BattleshipEnv(MultiTurnEnv):
                      state: Dict[str, Any],
                      **kwargs: Any) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Generate environment response to player move"""
-                 # Initialize game if needed
+        # Initialize game if needed
         if 'game' not in state:
             game = BattleshipGame()
             game.reset()  # This places ships randomly
@@ -170,6 +172,86 @@ class BattleshipEnv(MultiTurnEnv):
             content = f"{result}\n\n{board_render}\n\nRemember: [x]=hit, [o]=miss, [s]=sunk, [?]=unknown\nNext move:"
         
         return {"role": "user", "content": content}, state
+    
+    def _compact_conversation_history(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Remove old board states from conversation, keeping only the most recent one"""
+        compacted_messages = []
+        last_board_message_idx = -1
+        
+        # Find the last message that contains a board (has multiple brackets indicating a board)
+        for i, msg in enumerate(messages):
+            if msg.get('role') == 'user':
+                content = msg.get('content', '')
+                # Check if this looks like a board state (multiple [?], [x], [o], [s] patterns)
+                bracket_count = len(re.findall(r'\[[?xos]\]', content))
+                if bracket_count >= 10:  # Likely a board state
+                    last_board_message_idx = i
+        
+        # Keep all messages, but replace old board states with just the feedback
+        for i, msg in enumerate(messages):
+            if msg.get('role') == 'user':
+                content = msg.get('content', '')
+                bracket_count = len(re.findall(r'\[[?xos]\]', content))
+                
+                # If this is an old board state (not the most recent), extract just the feedback
+                if bracket_count >= 10 and i < last_board_message_idx:
+                    # Extract just the move result (HIT, MISS, etc.) from old board messages
+                    lines = content.split('\n')
+                    feedback_line = lines[0] if lines else content
+                    # Keep just the first line (move result) + "Next move:"
+                    compacted_content = f"{feedback_line}\nNext move:"
+                    compacted_messages.append({"role": "user", "content": compacted_content})
+                else:
+                    # Keep full message (most recent board or non-board messages)
+                    compacted_messages.append(msg)
+            else:
+                # Keep all assistant messages unchanged
+                compacted_messages.append(msg)
+        
+        return compacted_messages
+    
+    def rollout(self,
+                client: OpenAI,
+                model: str,
+                prompt: Union[str, List[Dict[str, Any]]],
+                answer: str,
+                sampling_args: Dict[str, Any] = {},
+                **kwargs: Any) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        """
+        Generate a multi-turn rollout with the environment, with conversation compacting.
+        """
+        is_completed = False
+        state = {'answer': answer}
+        assert isinstance(prompt, list)
+        messages = deepcopy(prompt) 
+        completion = []
+        turn = 0
+        while not is_completed:
+            if self.is_completed(messages, state, **kwargs):
+                is_completed = True
+                break
+            
+            # Apply conversation compacting before sending to model
+            compacted_messages = self._compact_conversation_history(messages)
+            
+            response = self.get_model_response(
+                prompt=compacted_messages,
+                client=client,
+                model=model,
+                sampling_args=sampling_args,
+                message_type=self.message_type
+            )
+            has_error = response.startswith("[ERROR]")
+            messages.append({"role": "assistant", "content": response})
+            completion.append({"role": "assistant", "content": response})
+            turn += 1
+            if self.is_completed(messages, state, **kwargs) or turn >= self.max_turns or has_error:
+                is_completed = True
+            else:
+                env_msg, state = self.env_response(messages, state, **kwargs)
+                messages.append(env_msg)
+                completion.append(env_msg)
+        return completion, state
     
     def create_hf_datasets(self) -> Tuple[Dataset, Dataset]:
         """Create HuggingFace datasets for training and evaluation"""

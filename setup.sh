@@ -41,6 +41,7 @@ export OPENAI_API_KEY=asdf
 # Add uv to PATH permanently
 echo "Adding uv to PATH..."
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+echo 'export OPENAI_API_KEY=asdf' >> ~/.bashrc
 
 echo "Setup complete!"
 echo ""

@@ -7,7 +7,7 @@ from datasets import Dataset
 from verifiers import MultiTurnEnv
 from verifiers.parsers import XMLParser
 from verifiers.rubrics import Rubric
-from scripts.battleship_game import BattleshipGame
+from .battleship_game import BattleshipGame
 
 BATTLESHIP_SYSTEM_PROMPT = """You are a competitive battleship player. Make sure you read the game instructions carefully, and always follow the required format.
 

@@ -8,7 +8,13 @@ echo "Setting up battleship RLVR environment..."
 if ! command -v uv &> /dev/null; then
     echo "Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    export PATH="$HOME/.cargo/bin:$PATH"
+    # Add uv to PATH for this session
+    export PATH="$HOME/.local/bin:$PATH"
+    # Verify uv is now available
+    if ! command -v uv &> /dev/null; then
+        echo "Error: uv installation failed or not found in PATH"
+        exit 1
+    fi
 else
     echo "uv already installed"
 fi

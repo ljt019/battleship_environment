@@ -47,8 +47,7 @@ args = SFTConfig(
 trainer = SFTTrainer(
     model=model,
     args=args,
-    train_dataset=dataset,
-    dataset_text_field="messages"
+    train_dataset=dataset
 )
 trainer.train()
 

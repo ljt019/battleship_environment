@@ -19,7 +19,7 @@ def main(api: str, num_samples: int, max_tokens: int, save_dataset: bool = False
     if api == "vllm":
         base_url = "http://localhost:8000/v1"
         api_key = "token-abc123"
-        model_name = "Qwen/Qwen3-1.7B"
+        model_name = "ljt019/Qwen3-1.7B-Battleship-SFT"
         client = OpenAI(base_url=base_url, api_key=api_key)
     elif api == "openai":
         api_key = os.getenv("OPENAI_API_KEY")

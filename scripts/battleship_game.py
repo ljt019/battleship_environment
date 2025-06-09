@@ -7,7 +7,7 @@ class BattleshipGame:
         self.cols = string.ascii_lowercase[:board_size]
         self.rows = [str(r) for r in range(1, board_size + 1)]
         self.ship_sizes = ship_sizes if ship_sizes else [5, 4, 3, 3, 2]  # carrier, battleship, cruiser, sub, destroyer
-        self.ship_names = {5: "Carrier", 4: "Battleship", 3: "Cruiser", 2: "Destroyer"}
+        self.ship_names = {5: "Carrier", 4: "Battleship", 3: "Cruiser/Submarine", 2: "Destroyer"}
 
         self.reset()
 
@@ -105,11 +105,12 @@ class BattleshipGame:
                 size = len(ship["coords"])
                 if size == 3:
                     # Handle both cruiser and submarine (both size 3)
-                    if ship_counts.get(3, 0) == 0:
+                    ship_counts[3] = ship_counts.get(3, 0) + 1
+                    count = ship_counts[3]
+                    if count == 1:
                         name = "Cruiser"
                     else:
                         name = "Submarine"
-                    ship_counts[3] = ship_counts.get(3, 0) + 1
                 else:
                     name = self.ship_names[size]
                 remaining.append(f"{name} ({size})")
@@ -118,8 +119,6 @@ class BattleshipGame:
 
         lines.append("")
         lines.append("Remaining ships: " + ", ".join(remaining))
-        lines.append("")
-        lines.append("Turn history: " + " ".join(self.history) if self.history else "Turn history: (none)")
         if self.last_move_invalid:
             lines.append("")
             lines.append("WARNING: Previous move was INVALID and wasted a turn!")

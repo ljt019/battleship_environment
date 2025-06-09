@@ -23,12 +23,12 @@ fi
 echo "Adding verifiers[all]..."
 uv add 'verifiers[all]'
 
-# Install additional dependencies
-echo "Installing huggingface-cli..."
-uv pip install huggingface-hub
+# Add dependencies to pyproject.toml instead of pip installing
+echo "Adding huggingface-hub..."
+uv add huggingface-hub
 
-echo "Installing wandb..."
-uv pip install wandb
+echo "Adding wandb..."
+uv add wandb
 
 # Sync all dependencies
 echo "Syncing dependencies..."
@@ -42,13 +42,3 @@ export OPENAI_API_KEY=asdf
 echo "Adding uv to PATH..."
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 echo 'export OPENAI_API_KEY=asdf' >> ~/.bashrc
-
-echo "Setup complete!"
-echo ""
-echo "IMPORTANT: Run 'source ~/.bashrc' or restart your shell to activate uv in PATH"
-echo ""
-echo "To start the vLLM server:"
-echo "  ./vllm.sh"
-echo ""
-echo "To run evaluation:"
-echo "  uv run python scripts/eval/evaluate_model.py --api vllm --num-samples 100 --max-tokens 512" 

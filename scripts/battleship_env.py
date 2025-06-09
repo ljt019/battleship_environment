@@ -11,12 +11,11 @@ from verifiers.parsers import XMLParser
 from verifiers.rubrics import Rubric
 from battleship_game import BattleshipGame
 
-BATTLESHIP_SYSTEM_PROMPT = """You are a competitive battleship player. Make sure you read the game instructions carefully, and always follow the required format.
+BATTLESHIP_SYSTEM_PROMPT = """You are the player in this Battleship game. This is YOUR game - you are making the moves, not helping someone else.
+The current board state will be sent to you as user messages, this is not a real user, simply how you receive the board state.
+Read the board state and make your next move in the required format."""
 
-In each turn, think step-by-step inside <think>...</think> tags, then make your move inside <guess>...</guess> tags."""
-
-BATTLESHIP_RULES = """You are playing Battleship against an opponent.
-Your goal is to sink all enemy ships by guessing their locations.
+BATTLESHIP_RULES = """Your goal is to sink all enemy ships by guessing their locations.
 
 IMPORTANT - Board symbols:
   [?] = unknown squares (you haven't guessed here yet)
@@ -25,20 +24,17 @@ IMPORTANT - Board symbols:
   [s] = sunk ship part (entire ship destroyed)
 
 REQUIRED FORMAT: For each move, you must use this exact format:
-<think>
-[Your strategic reasoning]
-</think>
 
 <guess>[coordinate]</guess>
 
 Example: <guess>[d6]</guess>
 
 Strategy tips:
-- After hitting a ship ([x]), try adjacent squares to find the rest of it
-- Use probability to target areas likely to contain ships
+- After you hit a ship ([x]), try adjacent squares to find the rest of it
+- Use probability to target areas likely to contain ships  
 - Remember ship sizes: Carrier(5), Battleship(4), Cruiser(3), Submarine(3), Destroyer(2)
 
-Make strategic moves to find and sink all ships efficiently."""
+Make your next strategic move to find and sink all ships efficiently."""
 
 
 class BattleshipEnv(MultiTurnEnv):
@@ -54,12 +50,11 @@ class BattleshipEnv(MultiTurnEnv):
         self.num_eval_samples = num_eval_samples
         self.seed = seed
         dataset, eval_dataset = self.create_hf_datasets()
-        parser = XMLParser(fields=["think", "guess"], answer_field="guess")
+        parser = XMLParser(fields=["guess"], answer_field="guess")
         rubric = Rubric(parser=parser)
         
-        def check_win_reward_func(completion, answer, **kwargs) -> float:
+        def win_reward_func(completion, answer, **kwargs) -> float:
             """Reward for winning the game"""
-            # Check if game was won (all ships sunk)
             for msg in completion:
                 if msg.get('role') == 'user':
                     content = msg.get('content', '').lower()
@@ -68,32 +63,77 @@ class BattleshipEnv(MultiTurnEnv):
             return 0.0
         
         def efficiency_reward_func(completion, answer, **kwargs) -> float:
-            """Reward for winning efficiently (fewer moves)"""
+            """Reward for efficiency - applies to ALL games, not just wins"""
             num_moves = len([x for x in completion if x['role'] == 'assistant'])
-            win_reward = check_win_reward_func(completion, answer, **kwargs)
-            if win_reward > 0 and num_moves > 0:
-                # Reward efficiency: 1/(moves + penalty) where penalty makes 17 moves = 0.5 reward
-                return win_reward / (num_moves + 16)
+            if num_moves > 0:
+                # Exponential decay: 2^(-(moves-17)/10) 
+                # 17 moves = 1.0, 25 moves = 0.57, 35 moves = 0.30
+                return 2**(-max(0, num_moves-17)/10)
             return 0.0
         
-        def move_format_reward_func(completion, answer, **kwargs) -> float:
+        def hit_reward_func(completion, answer, **kwargs) -> float:
+            """Reward for hitting ships"""
+            hit_count = 0
+            for msg in completion:
+                if msg.get('role') == 'user':
+                    content = msg.get('content', '').lower()
+                    # Count both regular hits and sunk hits
+                    if ('hit!' in content or 'hit and sunk!' in content) and 'miss' not in content:
+                        hit_count += 1
+            return hit_count * 0.1  # 0.1 reward per hit
+        
+        def sink_reward_func(completion, answer, **kwargs) -> float:
+            """Reward for sinking ships"""
+            sink_count = 0
+            for msg in completion:
+                if msg.get('role') == 'user':
+                    content = msg.get('content', '').lower()
+                    if 'hit and sunk!' in content or 'destroyed an entire ship' in content:
+                        sink_count += 1
+            return sink_count * 0.3  # 0.3 reward per ship sunk
+        
+        def format_reward_func(completion, answer, **kwargs) -> float:
             """Reward for proper move format"""
             assistant_messages = [x for x in completion if x['role'] == 'assistant']
             if not assistant_messages:
                 return 0.0
             
-            valid_moves = 0
+            valid_format_count = 0
             for msg in assistant_messages:
                 content = msg.get('content', '')
                 # Check for proper <guess>[coordinate]</guess> format
                 if re.search(r'<guess>\[[a-j][0-9]+\]</guess>', content, re.IGNORECASE):
-                    valid_moves += 1
+                    valid_format_count += 1
             
-            return valid_moves / len(assistant_messages)
+            return valid_format_count / len(assistant_messages)
         
-        rubric.add_reward_func(check_win_reward_func, weight=1.0)
-        rubric.add_reward_func(efficiency_reward_func, weight=1.0)
-        rubric.add_reward_func(move_format_reward_func, weight=0.3)
+        def valid_move_reward_func(completion, answer, **kwargs) -> float:
+            """Penalty for invalid moves (already played, out of bounds, etc.)"""
+            invalid_count = 0
+            total_moves = 0
+            
+            for msg in completion:
+                if msg.get('role') == 'user':
+                    content = msg.get('content', '').lower()
+                    if 'invalid move' in content or 'invalid format' in content:
+                        invalid_count += 1
+                elif msg.get('role') == 'assistant':
+                    # Count assistant moves that contain guess format
+                    if re.search(r'<guess>\[[a-j][0-9]+\]</guess>', msg.get('content', ''), re.IGNORECASE):
+                        total_moves += 1
+            
+            if total_moves == 0:
+                return 0.0
+            
+            # Return fraction of valid moves (1.0 = all valid, 0.0 = all invalid)
+            return max(0.0, (total_moves - invalid_count) / total_moves)
+        
+        rubric.add_reward_func(win_reward_func, weight=2.0)        # Main objective
+        rubric.add_reward_func(efficiency_reward_func, weight=0.5) # Encourage speed (reduced since always active)
+        rubric.add_reward_func(hit_reward_func, weight=0.5)        # Reward progress  
+        rubric.add_reward_func(sink_reward_func, weight=1.0)       # Reward major progress
+        rubric.add_reward_func(format_reward_func, weight=0.5)     # Ensure proper format
+        rubric.add_reward_func(valid_move_reward_func, weight=1.0) # Penalize invalid moves
 
         super().__init__(
             dataset=dataset,
@@ -129,7 +169,7 @@ class BattleshipEnv(MultiTurnEnv):
             
             # Return initial board state
             board_render = game.render()
-            content = f"Here's your starting board:\n\n{board_render}\n\nMake your first move:"
+            content = f"Here's the starting board:\n\n{board_render}\n\nYou are the player. Make your first move:"
             return {"role": "user", "content": content}, state
         
         game = state['game']
@@ -169,7 +209,7 @@ class BattleshipEnv(MultiTurnEnv):
         if game_over:
             content = f"{result}\n\n{board_render}\n\nVICTORY! You sunk all ships in {game.turn_count} moves!"
         else:
-            content = f"{result}\n\n{board_render}\n\nRemember: [x]=hit, [o]=miss, [s]=sunk, [?]=unknown\nNext move:"
+            content = f"{result}\n\n{board_render}\n\nRemember: [x]=hit, [o]=miss, [s]=sunk, [?]=unknown\nYou are the player, the user message is just the game state not an actual user. The former moves were made by you, now make your next move:"
         
         return {"role": "user", "content": content}, state
     
@@ -226,6 +266,13 @@ class BattleshipEnv(MultiTurnEnv):
         messages = deepcopy(prompt) 
         completion = []
         turn = 0
+        
+        # Initialize the game and show the initial board state before first model response
+        if 'game' not in state:
+            env_msg, state = self.env_response(messages, state, **kwargs)
+            messages.append(env_msg)
+            completion.append(env_msg)
+        
         while not is_completed:
             if self.is_completed(messages, state, **kwargs):
                 is_completed = True

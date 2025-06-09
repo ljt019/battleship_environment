@@ -1,10 +1,9 @@
 import verifiers as vf
 from datasets import load_dataset
 from trl import SFTTrainer, SFTConfig
+from config import MODEL_SIZE, BASE_MODEL_NAME, LEARNING_RATE, NUM_TRAIN_EPOCHS, BATCH_SIZE, GRADIENT_ACCUMULATION_STEPS, MAX_LENGTH, SFT_OUTPUT_DIR
 
-size = '1.7B'
-
-model, tokenizer = vf.get_model_and_tokenizer(f"Qwen/Qwen3-{size}", use_liger=False)
+model, tokenizer = vf.get_model_and_tokenizer(BASE_MODEL_NAME, use_liger=False)
 dataset = load_dataset('ljt019/battleship-sft', split='train')
 
 tok_counts = []
@@ -24,14 +23,14 @@ print(f"Mean tokens: {sum(tok_counts) / len(tok_counts)}")
 print(f"Median tokens: {sorted(tok_counts)[len(tok_counts) // 2]}")
 
 args = SFTConfig(
-    max_length=8192,
-    output_dir="sft-battleship",
-    per_device_train_batch_size=2,
-    gradient_accumulation_steps=1,
+    max_length=MAX_LENGTH,
+    output_dir=SFT_OUTPUT_DIR,
+    per_device_train_batch_size=BATCH_SIZE,
+    gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS,
     gradient_checkpointing=True,
     bf16=True,
-    learning_rate=2e-5,
-    num_train_epochs=3,
+    learning_rate=LEARNING_RATE,
+    num_train_epochs=NUM_TRAIN_EPOCHS,
     weight_decay=0.01,
     max_grad_norm=0.1,
     report_to="wandb",
@@ -41,7 +40,7 @@ args = SFTConfig(
     save_only_model=True,
     log_on_each_node=True,
     push_to_hub=True,
-    hub_model_id=f"Qwen3-{size}-Battleship-SFT",
+    hub_model_id=f"Qwen3-{MODEL_SIZE}-Battleship-SFT",
 )
 
 trainer = SFTTrainer(

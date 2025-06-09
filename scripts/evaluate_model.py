@@ -8,18 +8,20 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 import verifiers as vf
 from battleship_env import BattleshipEnv
+from config import NUM_SAMPLES, NUM_EVAL_SAMPLES, SEED, MAX_TURNS, SFT_MODEL_NAME, VLLM_BASE_URL, VLLM_API_KEY
 
 vf_env = BattleshipEnv(
-    num_samples=2000,
-    num_eval_samples=100,
-    seed=42
+    num_samples=NUM_SAMPLES,
+    num_eval_samples=NUM_EVAL_SAMPLES,
+    seed=SEED,
+    max_turns=MAX_TURNS
 )
 
 def main(api: str, num_samples: int, max_tokens: int, save_dataset: bool = False):
     if api == "vllm":
-        base_url = "http://localhost:8000/v1"
-        api_key = "token-abc123"
-        model_name = "ljt019/Qwen3-1.7B-Battleship-SFT"
+        base_url = VLLM_BASE_URL
+        api_key = VLLM_API_KEY
+        model_name = SFT_MODEL_NAME
         client = OpenAI(base_url=base_url, api_key=api_key)
     elif api == "openai":
         api_key = os.getenv("OPENAI_API_KEY")

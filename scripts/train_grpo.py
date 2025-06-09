@@ -1,18 +1,17 @@
 import verifiers as vf
 from scripts.battleship_env import BattleshipEnv
+from config import MODEL_SIZE, SFT_MODEL_NAME, NUM_SAMPLES, NUM_EVAL_SAMPLES, MAX_TURNS, GRPO_RUN_NAME
 
-size = '1.7B'
-model_name = f'ljt019/Qwen3-{size}-Battleship-SFT'
-model, tokenizer = vf.get_model_and_tokenizer(model_name)
+model, tokenizer = vf.get_model_and_tokenizer(SFT_MODEL_NAME)
 
 vf_env = BattleshipEnv(
-    num_samples=2000, 
-    num_eval_samples=20,
+    num_samples=NUM_SAMPLES, 
+    num_eval_samples=20,  # Keep smaller for training
     max_concurrent=32,
+    max_turns=MAX_TURNS
 )
 
-run_name = f"battleship-grpo-{size}"
-training_args=vf.grpo_defaults(run_name=run_name)
+training_args=vf.grpo_defaults(run_name=GRPO_RUN_NAME)
 training_args.num_iterations=1
 training_args.per_device_train_batch_size=6
 training_args.num_generations=12

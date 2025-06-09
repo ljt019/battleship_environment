@@ -15,15 +15,28 @@ In each turn, think step-by-step inside <think>...</think> tags, then make your 
 
 BATTLESHIP_RULES = """You are playing Battleship against an opponent.
 Your goal is to sink all enemy ships by guessing their locations.
-The board shows:
-  [?] = unknown squares
-  [x] = hit (part of a ship)
-  [o] = miss (water)
-  [s] = sunk ship part
 
-For each move, wrap your coordinate in square brackets (e.g., [d6]).
-Make strategic moves to find and sink all ships efficiently.
-Enter your first guess to begin."""
+IMPORTANT - Board symbols:
+  [?] = unknown squares (you haven't guessed here yet)
+  [x] = hit (you found part of a ship)
+  [o] = miss (you guessed here but found only water)
+  [s] = sunk ship part (entire ship destroyed)
+
+REQUIRED FORMAT: For each move, you must use this exact format:
+<think>
+[Your strategic reasoning]
+</think>
+
+<guess>[coordinate]</guess>
+
+Example: <guess>[d6]</guess>
+
+Strategy tips:
+- After hitting a ship ([x]), try adjacent squares to find the rest of it
+- Use probability to target areas likely to contain ships
+- Remember ship sizes: Carrier(5), Battleship(4), Cruiser(3), Submarine(3), Destroyer(2)
+
+Make strategic moves to find and sink all ships efficiently."""
 
 
 class BattleshipEnv(MultiTurnEnv):
@@ -45,8 +58,11 @@ class BattleshipEnv(MultiTurnEnv):
         def check_win_reward_func(completion, answer, **kwargs) -> float:
             """Reward for winning the game"""
             # Check if game was won (all ships sunk)
-            if any('won!' in msg.get('content', '').lower() for msg in completion if msg.get('role') == 'user'):
-                return 1.0
+            for msg in completion:
+                if msg.get('role') == 'user':
+                    content = msg.get('content', '').lower()
+                    if 'victory!' in content or 'you won!' in content or 'all ships sunk' in content:
+                        return 1.0
             return 0.0
         
         def efficiency_reward_func(completion, answer, **kwargs) -> float:
@@ -126,7 +142,7 @@ class BattleshipEnv(MultiTurnEnv):
             coord_match = re.search(r'\[([a-j][0-9]+)\]', last_message, re.IGNORECASE)
         
         if not coord_match:
-            return {"role": "user", "content": "Invalid move format. Please use [coordinate] format (e.g., [e5])."}, state
+            return {"role": "user", "content": "INVALID FORMAT! Please use: <guess>[coordinate]</guess>\nExample: <guess>[e5]</guess>\nTry again:"}, state
         
         coordinate = coord_match.group(1).lower()
         
@@ -138,20 +154,20 @@ class BattleshipEnv(MultiTurnEnv):
         
         # Generate result message
         if invalid:
-            result = "Invalid move."
+            result = "INVALID MOVE - That square was already guessed or doesn't exist!"
         elif hit:
             if sunk:
-                result = "Hit and sunk!"
+                result = "HIT AND SUNK! You destroyed an entire ship!"
             else:
-                result = "Hit!"
+                result = "HIT! You found part of a ship - try adjacent squares!"
         else:
-            result = "Miss."
+            result = "MISS - Only water here."
         
         # Generate response
         if game_over:
-            content = f"{result}\n\n{board_render}\n\n[GAME] You won! All ships sunk in {game.turn_count} moves."
+            content = f"{result}\n\n{board_render}\n\nVICTORY! You sunk all ships in {game.turn_count} moves!"
         else:
-            content = f"{result}\n\n{board_render}\n\nNext move:"
+            content = f"{result}\n\n{board_render}\n\nRemember: [x]=hit, [o]=miss, [s]=sunk, [?]=unknown\nNext move:"
         
         return {"role": "user", "content": content}, state
     

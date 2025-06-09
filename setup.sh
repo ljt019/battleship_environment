@@ -38,10 +38,16 @@ uv sync
 echo "Setting dummy OpenAI API key for vLLM..."
 export OPENAI_API_KEY=asdf
 
+# Add uv to PATH permanently
+echo "Adding uv to PATH..."
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+
 echo "Setup complete!"
 echo ""
+echo "IMPORTANT: Run 'source ~/.bashrc' or restart your shell to activate uv in PATH"
+echo ""
 echo "To start the vLLM server:"
-echo "  CUDA_VISIBLE_DEVICES=0,1 uv run vf-vllm --model 'Qwen/Qwen3-1.7B' --tensor-parallel-size 2 --host 0.0.0.0 --port 8000"
+echo "  ./vllm.sh"
 echo ""
 echo "To run evaluation:"
 echo "  uv run python scripts/eval/evaluate_model.py --api vllm --num-samples 100 --max-tokens 512" 

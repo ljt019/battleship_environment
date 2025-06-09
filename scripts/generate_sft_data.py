@@ -22,7 +22,6 @@ client = OpenAI(
 
 vf_env = BattleshipEnv(
     num_samples=NUM_DATASET_SAMPLES, 
-    num_eval_samples=NUM_DATASET_EVAL_SAMPLES, 
     seed=SEED,
     max_concurrent=MAX_CONCURRENT,
     max_turns=MAX_TURNS

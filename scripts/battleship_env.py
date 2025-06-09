@@ -267,16 +267,16 @@ class BattleshipEnv(MultiTurnEnv):
         completion = []
         turn = 0
         
-        # Initialize the game and show the initial board state before first model response
-        if 'game' not in state:
-            env_msg, state = self.env_response(messages, state, **kwargs)
-            messages.append(env_msg)
-            completion.append(env_msg)
-        
         while not is_completed:
             if self.is_completed(messages, state, **kwargs):
                 is_completed = True
                 break
+            
+            # Initialize the game if needed - do this BEFORE model response
+            if 'game' not in state:
+                env_msg, state = self.env_response(messages, state, **kwargs)
+                messages.append(env_msg)
+                completion.append(env_msg)
             
             # Apply conversation compacting before sending to model
             compacted_messages = self._compact_conversation_history(messages)

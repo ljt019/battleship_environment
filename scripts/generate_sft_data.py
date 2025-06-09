@@ -12,7 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 import verifiers as vf
 from battleship_env import BattleshipEnv
-from config import NUM_DATASET_SAMPLES, MAX_TOKENS, MAX_CONCURRENT, NUM_DATASET_EVAL_SAMPLES, SEED, MAX_TURNS, DATASET_PATH, HUB_DATASET_NAME, VLLM_BASE_URL, VLLM_API_KEY, SFT_MODEL_NAME
+from config import NUM_DATASET_SAMPLES, MAX_TOKENS, MAX_CONCURRENT, SEED, MAX_TURNS, DATASET_PATH, HUB_DATASET_NAME, VLLM_BASE_URL, VLLM_API_KEY, SFT_MODEL_NAME
 
 # Setup vLLM client
 client = OpenAI(

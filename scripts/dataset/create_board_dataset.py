@@ -3,11 +3,11 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from src.battleship_game import BattleshipGame
+from scripts.battleship_game import BattleshipGame
 from datasets import Dataset
 
 def parse_coordinate(coord):
-    """Convert coordinate like 'b6' to (row_idx, col_idx) - both 0-indexed"""
+    """Convert coordinate like 'b6' to (row_idx, col_idx)"""
     cols = 'abcdefghij'
     col_letter = coord[0].lower()
     row_num = int(coord[1:])
@@ -26,7 +26,7 @@ def get_adjacent_squares(coord, board_size=10):
     col_idx = cols.index(col_letter)
     
     adjacent = []
-    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # N, S, W, E
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
     
     for d_row, d_col in directions:
         new_row = row_num + d_row
@@ -39,7 +39,7 @@ def get_adjacent_squares(coord, board_size=10):
 
 def get_remaining_ships(sunk_ships_info):
     """Calculate which ship sizes are still active based on sunk ship tracking"""
-    original_ship_sizes = [5, 4, 3, 3, 2]  # Carrier, Battleship, Cruiser, Sub, Destroyer
+    original_ship_sizes = [5, 4, 3, 3, 2]
     remaining_ships = original_ship_sizes.copy()
     
     for sunk_ship_size in sunk_ships_info:
@@ -52,17 +52,16 @@ def can_ship_fit_here(game, start_row, start_col, ship_size, orientation):
     """Check if a ship can be legally placed at this position"""
     board_size = 10
     
-    # Calculate ship squares
     if orientation == 'horizontal':
         if start_col + ship_size > board_size:
             return False
         ship_squares = [(start_row, start_col + i) for i in range(ship_size)]
-    else:  # vertical
+    else:
         if start_row + ship_size > board_size:
             return False
         ship_squares = [(start_row + i, start_col) for i in range(ship_size)]
     
-    # Check each square - can't overlap with misses ('o') or sunk ships ('s')
+    # Check each square - can't overlap with misses or sunk ships
     for row, col in ship_squares:
         coord = make_coordinate(row, col)
         state = game.board[coord]
@@ -79,7 +78,6 @@ def calculate_ship_placement_probabilities(game, sunk_ships_info):
     if not remaining_ships:
         return {}
     
-    # Initialize probability grid
     probability_map = {}
     for row in range(board_size):
         for col in range(board_size):
@@ -91,13 +89,11 @@ def calculate_ship_placement_probabilities(game, sunk_ships_info):
         for start_row in range(board_size):
             for start_col in range(board_size):
                 
-                # Try horizontal placement
                 if can_ship_fit_here(game, start_row, start_col, ship_size, 'horizontal'):
                     for i in range(ship_size):
                         coord = make_coordinate(start_row, start_col + i)
                         probability_map[coord] += 1
                 
-                # Try vertical placement
                 if can_ship_fit_here(game, start_row, start_col, ship_size, 'vertical'):
                     for i in range(ship_size):
                         coord = make_coordinate(start_row + i, start_col)
@@ -111,7 +107,7 @@ def find_optimal_move(game, sunk_ships_info):
     if not valid_moves:
         return None
     
-    # Priority 1: Target adjacent to active hits (most important rule)
+    # Priority 1: Target adjacent to active hits
     active_hits = [coord for coord, state in game.board.items() if state == 'x']
     if active_hits:
         adjacent_moves = []
@@ -121,13 +117,12 @@ def find_optimal_move(game, sunk_ships_info):
                     adjacent_moves.append(adjacent_coord)
         
         if adjacent_moves:
-            adjacent_moves = list(set(adjacent_moves))  # Remove duplicates
+            adjacent_moves = list(set(adjacent_moves))
             return random.choice(adjacent_moves)
     
     # Priority 2: Use probability density for hunt mode
     probability_map = calculate_ship_placement_probabilities(game, sunk_ships_info)
     
-    # Find moves with highest probability
     best_probability = -1
     best_moves = []
     
@@ -149,138 +144,150 @@ class GameSimulator:
     
     def __init__(self):
         self.game = BattleshipGame()
-        self.sunk_ships = []  # Track sunk ship sizes
+        self.sunk_ships = []
         self.original_ship_sizes = [5, 4, 3, 3, 2]
-        
-    def play_smart_moves(self, max_moves):
-        """Play moves using optimal strategy with some randomness for diversity"""
-        num_moves = random.randint(0, max_moves)
-        
-        for _ in range(num_moves):
-            if self.game.game_over or not self.game.get_valid_moves():
-                break
-                
-            # 80% optimal, 20% suboptimal for training diversity
-            if random.random() < 0.80:
-                smart_move = find_optimal_move(self.game, self.sunk_ships)
-                if smart_move:
-                    move = smart_move
-                else:
-                    move = random.choice(self.game.get_valid_moves())
-            else:
-                move = random.choice(self.game.get_valid_moves())
-            
-            observation, hit, sunk, game_over, invalid = self.game.step(move)
-            
-            if sunk:
-                self._track_sunk_ship()
     
     def _track_sunk_ship(self):
         """Track when a ship is sunk by inferring size from board state"""
-        # Count current sunk squares
         current_sunk_squares = sum(1 for state in self.game.board.values() if state == 's')
-        
-        # Calculate newly sunk squares
         expected_sunk_squares = sum(self.sunk_ships)
         newly_sunk_squares = current_sunk_squares - expected_sunk_squares
         
         if newly_sunk_squares > 0:
-            # Find remaining ship that matches newly sunk squares
             remaining_ships = [size for size in self.original_ship_sizes if size not in self.sunk_ships]
             
             if newly_sunk_squares in remaining_ships:
                 self.sunk_ships.append(newly_sunk_squares)
             else:
-                # Fallback: assume smallest remaining ship
                 if remaining_ships:
                     self.sunk_ships.append(min(remaining_ships))
 
-def create_training_example_with_tracking(simulator):
-    """Create a training example in verifiers chat format"""
-    board_state = simulator.game.render()
-    optimal_move = find_optimal_move(simulator.game, simulator.sunk_ships)
+def play_full_game(max_turns=50):
+    """Play a complete battleship game and return the conversation"""
+    simulator = GameSimulator()
+    game = simulator.game
     
-    if not optimal_move:
-        return None
+    system_prompt = {
+        "role": "system",
+        "content": "You are a competitive battleship player. Make sure you read the game instructions carefully, and always follow the required format.\n\nIn each turn, think step-by-step inside <think>...</think> tags, then make your move inside <guess>...</guess> tags."
+    }
     
-    question = f"Given this battleship board state, what is the best next move?\n\n{board_state}"
+    user_prompt = {
+        "role": "user", 
+        "content": "You are playing Battleship against an opponent.\nYour goal is to sink all enemy ships by guessing their locations.\nThe board shows:\n  [?] = unknown squares\n  [x] = hit (part of a ship)\n  [o] = miss (water)\n  [s] = sunk ship part\n\nFor each move, wrap your coordinate in square brackets (e.g., [d6]).\nMake strategic moves to find and sink all ships efficiently.\nEnter your first guess to begin."
+    }
+    
+    initial_board_message = {
+        "role": "user",
+        "content": f"Here's your starting board:\n\n{game.render()}\n\nMake your first move:"
+    }
+    
+    conversation = [initial_board_message]
+    turn_count = 0
+    
+    while not game.game_over and turn_count < max_turns:
+        optimal_move = find_optimal_move(game, simulator.sunk_ships)
+        if not optimal_move:
+            break
+            
+        # Assistant move (reasoning will be added later by Claude)
+        assistant_move = {
+            "role": "assistant",
+            "content": f"<guess>[{optimal_move}]</guess>"
+        }
+        conversation.append(assistant_move)
+        
+        observation, hit, sunk, game_over, invalid = game.step(optimal_move)
+        
+        if sunk:
+            simulator._track_sunk_ship()
+        
+        if invalid:
+            feedback = f"Invalid move! Try again."
+        elif hit:
+            if sunk:
+                feedback = f"Hit and sunk!"
+            else:
+                feedback = f"Hit!"
+        else:
+            feedback = f"Miss."
+        
+        if game_over:
+            env_response = {
+                "role": "user",
+                "content": f"{feedback}\n\n{game.render()}\n\n[GAME] You won! All ships sunk in {len(game.history)} moves."
+            }
+        else:
+            env_response = {
+                "role": "user",
+                "content": f"{feedback}\n\n{game.render()}\n\nNext move:"
+            }
+        
+        conversation.append(env_response)
+        turn_count += 1
+    
+    final_reward = 2.0 if game_over else 1.0
     
     return {
-        "prompt": [{"role": "user", "content": question}],
-        "completion": [{"role": "assistant", "content": f"[{optimal_move}]"}]
+        "prompt": [system_prompt, user_prompt],
+        "completion": conversation,
+        "answer": "victory" if game_over else "incomplete",
+        "reward": final_reward
     }
 
-def generate_training_dataset(num_examples=3000):
-    """Generate training dataset with mixed game stages"""
-    print(f"Generating {num_examples} battleship training examples...")
+def generate_multiturn_games_dataset(num_games=1000):
+    """Generate multi-turn battleship games dataset"""
+    print(f"Generating {num_games} complete battleship games...")
     examples = []
     
-    early_game_count = 0
-    mid_game_count = 0
-    late_game_count = 0
+    successful_games = 0
     
-    for i in range(num_examples):
-        simulator = GameSimulator()
+    for i in range(num_games):
+        try:
+            game_example = play_full_game(max_turns=50)
+            
+            if len(game_example['completion']) >= 4:
+                examples.append(game_example)
+                if game_example['answer'] == 'victory':
+                    successful_games += 1
         
-        # Mix game stages for training diversity (33% each)
-        if i % 3 == 0:
-            max_moves = random.randint(0, 15)  # Early game
-            stage = "early"
-            early_game_count += 1
-        elif i % 3 == 1:
-            max_moves = random.randint(16, 35)  # Mid game
-            stage = "mid"
-            mid_game_count += 1
-        else:
-            max_moves = random.randint(36, 70)  # Late game
-            stage = "late"
-            late_game_count += 1
-        
-        simulator.play_smart_moves(max_moves)
-        
-        if simulator.game.game_over:
+        except Exception as e:
+            print(f"Error in game {i}: {e}")
             continue
         
-        # Force minimum move count for late games
-        if stage == "late":
-            actual_moves = len(simulator.game.history)
-            if actual_moves < 36:
-                additional_moves = 36 - actual_moves
-                simulator.play_smart_moves(additional_moves)
-        
-        example = create_training_example_with_tracking(simulator)
-        if example:
-            examples.append(example)
-        
-        if i % 1000 == 0:
-            print(f"Generated {len(examples)} examples... ({i}/{num_examples} attempts)")
+        if i % 100 == 0:
+            print(f"Generated {len(examples)} games... ({i}/{num_games} attempts)")
     
-    print(f"Created {len(examples)} training examples")
-    print(f"Distribution: Early={early_game_count}, Mid={mid_game_count}, Late={late_game_count}")
+    print(f"Created {len(examples)} game examples")
+    print(f"Successful completions: {successful_games}/{len(examples)}")
     return examples
 
 def main():
-    """Generate and save the battleship dataset"""
-    training_examples = generate_training_dataset(num_examples=3000)
+    """Generate and save the battleship multi-turn games dataset"""
+    game_examples = generate_multiturn_games_dataset(num_games=1000)
     
-    if not training_examples:
-        print("ERROR: No training examples generated!")
+    if not game_examples:
+        print("ERROR: No game examples generated!")
         return
     
-    dataset = Dataset.from_list(training_examples)
+    dataset = Dataset.from_list(game_examples)
     
-    # Show sample
-    print("\nSample training example:")
+    print("\nSample game example:")
     print("-" * 40)
     sample = dataset[0]
-    print("Prompt:", sample['prompt'])
-    print("Completion:", sample['completion'])
+    print("System prompt:", sample['prompt'][0]['content'][:100] + "...")
+    print("User prompt:", sample['prompt'][1]['content'][:100] + "...")
+    print("Conversation length:", len(sample['completion']))
+    print("First move:", sample['completion'][1]['content'])
+    print("First response:", sample['completion'][2]['content'][:100] + "...")
+    print("Answer:", sample['answer'])
+    print("Reward:", sample['reward'])
     
-    # Save dataset
-    output_path = "datasets/battleship_rlvr_qwen3_dataset"
+    output_path = "datasets/battleship_board_states"
     dataset.save_to_disk(output_path)
-    print(f"\nDataset saved to: {output_path}")
+    print(f"\nMulti-turn games dataset saved to: {output_path}")
     print(f"Total examples: {len(dataset)}")
+    print("\nNext step: Upload to hub, then run generate_reasoning_with_claude.py to add <think> tags")
 
 if __name__ == "__main__":
-    main()
+    main() 

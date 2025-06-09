@@ -9,10 +9,9 @@ dataset = load_dataset('ljt019/battleship-sft', split='train')
 
 tok_counts = []
 for row in dataset:
-    # count tokens in (prompt, completion)
-    messages = row['prompt'] + row['completion'] # type: ignore
+    # count tokens in the conversation messages
     toks = tokenizer.apply_chat_template( 
-        messages,
+        row['messages'],
         tokenize=True
     )
     tok_counts.append(len(toks))
@@ -48,7 +47,8 @@ args = SFTConfig(
 trainer = SFTTrainer(
     model=model,
     args=args,
-    train_dataset=dataset # type: ignore
+    train_dataset=dataset,
+    dataset_text_field="messages"
 )
 trainer.train()
 

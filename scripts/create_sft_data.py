@@ -18,7 +18,6 @@ def main():
 
     vf_env = BattleshipEnv(
         num_samples=NUM_DATASET_SAMPLES,
-        num_eval_samples=NUM_DATASET_SAMPLES,
         seed=SEED,
         max_concurrent=MAX_CONCURRENT_API,
         max_turns=MAX_TURNS

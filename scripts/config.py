@@ -52,7 +52,7 @@ SFT_OUTPUT_DIR = "sft-battleship"
 # SFT Dataset Generation
 # ----------------------------
 
-NUM_DATASET_SAMPLES = 300  
+NUM_DATASET_SAMPLES = 100  
 DATASET_PATH = "datasets/battleship-sft"  
 HUB_DATASET_NAME = "ljt019/battleship-sft"  
 

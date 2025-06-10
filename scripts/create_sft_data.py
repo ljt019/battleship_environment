@@ -41,7 +41,8 @@ def main():
         client=client,
         model=SFT_MODEL_NAME,
         sampling_args=sampling_args,
-        num_samples=NUM_DATASET_SAMPLES
+        num_samples=NUM_DATASET_SAMPLES,
+        num_eval_samples=NUM_DATASET_SAMPLES
     )
 
     end_time = time.time()

@@ -18,7 +18,7 @@ GRPO_RUN_NAME = f"battleship-grpo-{MODEL_SIZE}"
 # Battleship Game Environment
 # ----------------------------
 
-MAX_TURNS = 45  
+MAX_TURNS = 35  
 SEED = 42 
 
 # ----------------------------

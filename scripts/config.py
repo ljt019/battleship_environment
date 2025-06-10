@@ -62,7 +62,7 @@ DATASET_MODEL_SIZE = "14B"
 # API Configuration
 # ----------------------------
 
-MAX_CONCURRENT_API = 3 
+MAX_CONCURRENT_API = 6  # Limited by vLLM's --max-model-len 32768 (6.78x capacity)
 MAX_TOKENS_API = 4096   
 
 # LM Studio

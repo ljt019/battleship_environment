@@ -52,7 +52,7 @@ SFT_OUTPUT_DIR = "sft-battleship"
 # SFT Dataset Generation
 # ----------------------------
 
-NUM_DATASET_SAMPLES = 25  
+NUM_DATASET_SAMPLES = 50  
 DATASET_PATH = "datasets/battleship-sft"  
 HUB_DATASET_NAME = "ljt019/battleship-sft"  
 
@@ -62,7 +62,7 @@ DATASET_MODEL_SIZE = "14B"
 # API Configuration
 # ----------------------------
 
-MAX_CONCURRENT_API = 2
+MAX_CONCURRENT_API = 4
 MAX_TOKENS_API = 8192   
 
 # LM Studio

@@ -62,7 +62,7 @@ DATASET_MODEL_SIZE = "14B"
 # API Configuration
 # ----------------------------
 
-MAX_CONCURRENT_API = 5
+MAX_CONCURRENT_API = 4
 MAX_TOKENS_API = 4096   
 
 # LM Studio

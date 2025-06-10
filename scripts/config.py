@@ -18,7 +18,7 @@ GRPO_RUN_NAME = f"battleship-grpo-{MODEL_SIZE}"
 # Battleship Game Environment
 # ----------------------------
 
-MAX_TURNS = 40  
+MAX_TURNS = 25  
 SEED = 42 
 
 # ----------------------------
@@ -52,7 +52,7 @@ SFT_OUTPUT_DIR = "sft-battleship"
 # SFT Dataset Generation
 # ----------------------------
 
-NUM_DATASET_SAMPLES = 100  
+NUM_DATASET_SAMPLES = 300  
 DATASET_PATH = "datasets/battleship-sft"  
 HUB_DATASET_NAME = "ljt019/battleship-sft"  
 

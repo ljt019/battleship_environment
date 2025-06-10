@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.scripts]
-battleship-train-grpo = "scripts.train_grpo:main"
-battleship-train-sft = "scripts.train_sft_warmup:main"
-battleship-eval = "scripts.evaluate:main"
-battleship-create-data = "scripts.create_sft_data:main"
+train-grpo = "scripts.train_grpo:main"
+eval = "scripts.evaluate:main"
+train-sft-warmup = "scripts.train_sft_warmup:main"
+create-sft-data = "scripts.create_sft_data:main"

@@ -56,6 +56,8 @@ NUM_DATASET_SAMPLES = 5
 DATASET_PATH = "datasets/battleship-sft"  
 HUB_DATASET_NAME = "ljt019/battleship-sft"  
 
+DATASET_MODEL_SIZE = "14B"
+
 # ----------------------------
 # API Configuration
 # ----------------------------

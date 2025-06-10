@@ -2,8 +2,6 @@
 
 set -e  # Exit on any error
 
-echo "Setting up battleship RLVR environment..."
-
 # Install uv if not already installed
 if ! command -v uv &> /dev/null; then
     echo "Installing uv..."
@@ -19,32 +17,33 @@ else
     echo "uv already installed"
 fi
 
-# Add verifiers with all extras
-echo "Adding verifiers[all]..."
+# Add verifiers and flash-attn
 uv add 'verifiers[all]'
+uv pip install flash-attn --no-build-isolation
 
-# Add dependencies to pyproject.toml instead of pip installing
-echo "Adding huggingface-hub..."
 uv add huggingface-hub
-
-echo "Adding wandb..."
 uv add wandb
 
-# Sync all dependencies
-echo "Syncing dependencies..."
 uv sync
 
 # Set dummy OpenAI API key for vLLM
-echo "Setting dummy OpenAI API key for vLLM..."
 export OPENAI_API_KEY=asdf
 
 # Add uv to PATH permanently
-echo "Adding uv to PATH..."
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-echo 'export OPENAI_API_KEY=asdf' >> ~/.bashrc
+# echo "Adding uv to PATH..."
+# echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+#echo 'export OPENAI_API_KEY=asdf' >> ~/.bashrc
+
+# download and login to huggingface hub
+pip install huggingface-hub
 
 # Source bashrc to make changes active in current session
-echo "Activating environment..."
 source ~/.bashrc
 
-echo "Setup complete! Environment is ready to use."
+# login to huggingface hub
+huggingface-cli login
+uv run wandb login
+
+clear
+
+echo "Setup complete! Pod is ready to use."

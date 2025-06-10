@@ -70,19 +70,14 @@ def main():
     print(f"   Average reward: {sum(rewards)/len(rewards):.3f}")
     print(f"   Win rate: {sum(1 for r in rewards if r > 0.5)/len(rewards)*100:.1f}%")
 
-    # Save
+    # Save locally
     print(f"\nSaving to {DATASET_PATH}")
     dataset.save_to_disk(DATASET_PATH)
-
-    try:
-        dataset.push_to_hub(HUB_DATASET_NAME)
-        print(f"Pushed to hub: {HUB_DATASET_NAME}")
-    except Exception as e:
-        print(f"Failed to push to hub: {e}")
 
     total_time = time.time() - start_time
     print(f"\nDone! Total time: {total_time/60:.1f} minutes")
     print(f"Generated {len(dataset)} battleship games")
+    print(f"Run 'uv run scripts/upload_dataset.py' to upload to hub")
 
 if __name__ == "__main__":
     main() 

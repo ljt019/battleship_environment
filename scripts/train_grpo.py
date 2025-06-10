@@ -1,4 +1,10 @@
+import sys
+import os
 import verifiers as vf
+
+# Add project root to path so we can import from src
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src.battleship_grpo import BattleshipEnv
 from scripts.config import MODEL_SIZE, BATCH_SIZE, SFT_MODEL_NAME, GRPO_GRADIENT_ACCUMULATION_STEPS, MAX_PROMPT_LENGTH, MAX_COMPLETION_LENGTH, NUM_GRPO_SAMPLES, NUM_GRPO_EVAL_SAMPLES, MAX_TURNS, GRPO_RUN_NAME, MAX_CONCURRENT_API
 

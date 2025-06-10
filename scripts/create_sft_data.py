@@ -17,7 +17,8 @@ def main():
     )
 
     vf_env = BattleshipEnv(
-        num_samples=NUM_DATASET_SAMPLES, 
+        num_samples=NUM_DATASET_SAMPLES,
+        num_eval_samples=NUM_DATASET_SAMPLES,
         seed=SEED,
         max_concurrent=MAX_CONCURRENT_API,
         max_turns=MAX_TURNS
@@ -42,7 +43,6 @@ def main():
         model=SFT_MODEL_NAME,
         sampling_args=sampling_args,
         num_samples=NUM_DATASET_SAMPLES,
-        num_eval_samples=NUM_DATASET_SAMPLES
     )
 
     end_time = time.time()

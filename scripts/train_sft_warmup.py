@@ -1,21 +1,19 @@
 import verifiers as vf
 from datasets import load_dataset
 from trl import SFTTrainer, SFTConfig
-from config import MODEL_SIZE, BASE_MODEL_NAME, LEARNING_RATE, NUM_TRAIN_EPOCHS, BATCH_SIZE, GRADIENT_ACCUMULATION_STEPS, MAX_LENGTH, SFT_OUTPUT_DIR
+from scripts.config import MODEL_SIZE, BASE_MODEL_NAME, LEARNING_RATE, NUM_TRAIN_EPOCHS, BATCH_SIZE, SFT_GRADIENT_ACCUMULATION_STEPS, MAX_COMPLETION_LENGTH, SFT_OUTPUT_DIR
 
 model, tokenizer = vf.get_model_and_tokenizer(BASE_MODEL_NAME, use_liger=False)
 dataset = load_dataset('ljt019/battleship-sft', split='train')
 
 tok_counts = []
 for row in dataset:
-    # count tokens in the conversation messages
     toks = tokenizer.apply_chat_template( 
         row['messages'],
         tokenize=True
     )
     tok_counts.append(len(toks))
 
-# tok count stats
 print(f"Dataset size: {len(tok_counts)}")
 print(f"Min tokens: {min(tok_counts)}")
 print(f"Max tokens: {max(tok_counts)}")
@@ -23,10 +21,10 @@ print(f"Mean tokens: {sum(tok_counts) / len(tok_counts)}")
 print(f"Median tokens: {sorted(tok_counts)[len(tok_counts) // 2]}")
 
 args = SFTConfig(
-    max_length=MAX_LENGTH,
+    max_length=MAX_COMPLETION_LENGTH,
     output_dir=SFT_OUTPUT_DIR,
     per_device_train_batch_size=BATCH_SIZE,
-    gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS,
+    gradient_accumulation_steps=SFT_GRADIENT_ACCUMULATION_STEPS,
     gradient_checkpointing=True,
     bf16=True,
     learning_rate=LEARNING_RATE,
@@ -43,11 +41,15 @@ args = SFTConfig(
     hub_model_id=f"Qwen3-{MODEL_SIZE}-Battleship-SFT",
 )
 
-trainer = SFTTrainer(
-    model=model,
-    args=args,
-    train_dataset=dataset
-)
-trainer.train()
+def main():
+    trainer = SFTTrainer(
+        model=model,
+        args=args,
+        train_dataset=dataset
+    )
+    trainer.train()
+
+if __name__ == "__main__":
+    main()
 
 

@@ -1,41 +1,73 @@
-# Model Configuration
-MODEL_SIZE = "1.7B"
-BASE_MODEL_NAME = f"Qwen/Qwen3-{MODEL_SIZE}"
-SFT_MODEL_NAME = f"ljt019/Qwen3-{MODEL_SIZE}-Battleship-SFT"
-GRPO_MODEL_NAME = f"ljt019/Qwen3-{MODEL_SIZE}-Battleship-GRPO"
+# ----------------------------
+# General Model Configuration
+# ----------------------------
 
-# Training Run Names
-SFT_RUN_NAME = f"battleship-sft-{MODEL_SIZE}"
+MODEL_SIZE = "1.7B"
+BASE_MODEL_NAME = f"Qwen/Qwen3-{MODEL_SIZE}"  
+SFT_MODEL_NAME = f"ljt019/Qwen3-{MODEL_SIZE}-Battleship-SFT" 
+GRPO_MODEL_NAME = f"ljt019/Qwen3-{MODEL_SIZE}-Battleship-GRPO"  
+
+# ----------------------------
+# WANDB Run Names
+# ----------------------------
+
+SFT_RUN_NAME = f"battleship-sft-{MODEL_SIZE}"  
 GRPO_RUN_NAME = f"battleship-grpo-{MODEL_SIZE}"
 
-# Environment Configuration  
-MAX_TURNS = 45
-NUM_SAMPLES = 2000
-NUM_EVAL_SAMPLES = 100
-SEED = 42
+# ----------------------------
+# Battleship Game Environment
+# ----------------------------
 
-# Dataset Configuration
-NUM_DATASET_SAMPLES = 5
-MAX_CONCURRENT = 25
-MAX_TOKENS = 8192
+MAX_TURNS = 45  
+SEED = 42 
 
-# Training Configuration
+# ----------------------------
+# General Training Configuration
+# ----------------------------
+
+BATCH_SIZE = 2  # Batch size per device
+MAX_PROMPT_LENGTH = 1024
+MAX_COMPLETION_LENGTH = 8192
+
+# ----------------------------
+# GRPO Training Configuration
+# ----------------------------
+
+NUM_GRPO_SAMPLES = 2000 
+NUM_GRPO_EVAL_SAMPLES = 20
+
+GRPO_GRADIENT_ACCUMULATION_STEPS = 4  
+
+# ----------------------------
+# SFT Training Configuration
+# ----------------------------
+
 LEARNING_RATE = 2e-5
-NUM_TRAIN_EPOCHS = 3
-BATCH_SIZE = 2
-GRADIENT_ACCUMULATION_STEPS = 1
-MAX_LENGTH = 8192
+NUM_TRAIN_EPOCHS = 3 
 
-# API Configuration
-VLLM_BASE_URL = "http://localhost:8000/v1"
-VLLM_API_KEY = "token-abc123"
-
-# LM Studio Configuration
-LMSTUDIO_BASE_URL = "http://172.21.160.1:1234/v1"
-LMSTUDIO_API_KEY = "lm-studio"
-LMSTUDIO_MODEL = "qwen3-8b" 
-
-# Paths
-DATASET_PATH = "datasets/battleship-sft"
-HUB_DATASET_NAME = "ljt019/battleship-sft"
+SFT_GRADIENT_ACCUMULATION_STEPS = 1  
 SFT_OUTPUT_DIR = "sft-battleship" 
+
+# ----------------------------
+# SFT Dataset Generation
+# ----------------------------
+
+NUM_DATASET_SAMPLES = 5  
+DATASET_PATH = "datasets/battleship-sft"  
+HUB_DATASET_NAME = "ljt019/battleship-sft"  
+
+# ----------------------------
+# API Configuration
+# ----------------------------
+
+MAX_CONCURRENT_API = 25 
+MAX_TOKENS_API = 8192  
+
+# LM Studio
+LMSTUDIO_BASE_URL = "http://172.21.160.1:1234/v1"  
+LMSTUDIO_API_KEY = "lm-studio" 
+LMSTUDIO_MODEL = "qwen3-8b"  
+
+# vLLM
+VLLM_BASE_URL = "http://localhost:8000/v1" 
+VLLM_API_KEY = "token-abc123"  

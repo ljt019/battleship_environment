@@ -1,10 +1,33 @@
 [project]
 name = "battleship-rlvr-qwen3"
 version = "0.1.0"
-description = "Add your description here"
+description = "A battleship game environment for RLVR training using Qwen3 models"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "anthropic>=0.52.2",
-    "verifiers[all]>=0.1.0",
+license = { text = "MIT" }
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
 ]
+keywords = ["battleship", "rlvr", "reinforcement-learning", "llm", "qwen3"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Games/Entertainment :: Board Games",
+]
+
+dependencies = [
+    "verifiers[all]>=0.1.0",
+    "huggingface-hub>=0.20.0",
+    "wandb>=0.16.0",
+]
+
+[project.scripts]
+battleship-train-grpo = "scripts.train_grpo:main"
+battleship-train-sft = "scripts.train_sft_warmup:main"
+battleship-eval = "scripts.evaluate:main"
+battleship-create-data = "scripts.create_sft_data:main"

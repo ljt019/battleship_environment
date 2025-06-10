@@ -1,20 +1,17 @@
 import os
 import argparse
 from openai import OpenAI
-import sys
 
-# Add the scripts directory to the path to import battleship modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-import verifiers as vf
-from battleship_env import BattleshipEnv
-from config import NUM_SAMPLES, NUM_EVAL_SAMPLES, SEED, MAX_TURNS, SFT_MODEL_NAME, VLLM_BASE_URL, VLLM_API_KEY
+from src.battleship_grpo import BattleshipEnv
+from scripts.config import SEED, MAX_TURNS, SFT_MODEL_NAME, VLLM_BASE_URL, VLLM_API_KEY, MAX_CONCURRENT_API, MAX_TOKENS_API
 
 vf_env = BattleshipEnv(
-    num_samples=NUM_SAMPLES,
-    num_eval_samples=NUM_EVAL_SAMPLES,
+    num_samples=100,
+    num_eval_samples=100,
     seed=SEED,
-    max_turns=MAX_TURNS
+    max_turns=MAX_TURNS,
+    max_concurrent=MAX_CONCURRENT_API,
+    max_tokens=MAX_TOKENS_API
 )
 
 def main(api: str, num_samples: int, max_tokens: int, save_dataset: bool = False):
@@ -53,7 +50,6 @@ def main(api: str, num_samples: int, max_tokens: int, save_dataset: bool = False
             avg_reward = sum(v) / len(v) if v else 0
             print(k, '-', avg_reward)
     
-    # Calculate win rate
     win_rate = sum(1 for r in results.get('rewards', []) if r > 0.5) / len(results.get('rewards', [1])) if results.get('rewards') else 0
     print(f"Win rate: {win_rate:.1%}")
     
@@ -69,8 +65,5 @@ if __name__ == "__main__":
     parser.add_argument("--max-tokens", "-t", type=int, default=512)
     parser.add_argument("--save-dataset", "-s", action="store_true", default=False)
     args = parser.parse_args()
-    
-    if args.api == "vllm" and not os.getenv("OPENAI_API_KEY"):
-        os.environ["OPENAI_API_KEY"] = "dummy"
     
     main(args.api, args.num_samples, args.max_tokens, args.save_dataset)

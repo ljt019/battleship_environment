@@ -62,8 +62,8 @@ DATASET_MODEL_SIZE = "14B"
 # API Configuration
 # ----------------------------
 
-MAX_CONCURRENT_API = 25 
-MAX_TOKENS_API = 8192  
+MAX_CONCURRENT_API = 3 
+MAX_TOKENS_API = 4096   
 
 # LM Studio
 LMSTUDIO_BASE_URL = "http://172.21.160.1:1234/v1"  

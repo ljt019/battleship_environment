@@ -3,8 +3,6 @@ import os
 import verifiers as vf
 from datasets import load_dataset
 from trl import SFTTrainer, SFTConfig
-from verifiers.inference.vllm_client import VLLMClient
-from transformers import TrainerCallback
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -17,6 +15,22 @@ dataset = load_dataset('ljt019/battleship-sft', split='train')
 # split top 500 highest reward samples for warmup 
 dataset = dataset.sort("reward", reverse=True)
 dataset = dataset.select(range(500))    
+
+# Print token count statistics
+tok_counts = []
+for row in dataset:
+    messages = row['prompt'] + row['completion']
+    toks = tokenizer.apply_chat_template(
+        messages,
+        tokenize=True
+    )
+    tok_counts.append(len(toks))
+
+print(f"Dataset size: {len(tok_counts)}")
+print(f"Min tokens: {min(tok_counts)}")
+print(f"Max tokens: {max(tok_counts)}")
+print(f"Mean tokens: {sum(tok_counts) / len(tok_counts)}")
+print(f"Median tokens: {sorted(tok_counts)[len(tok_counts) // 2]}")
 
 args = SFTConfig(
     max_length=MAX_COMPLETION_LENGTH,
@@ -43,7 +57,8 @@ def main():
     trainer = SFTTrainer(
         model=model,
         args=args,
-        train_dataset=dataset
+        train_dataset=dataset,
+        tokenizer=tokenizer,
     )
     trainer.train()
 

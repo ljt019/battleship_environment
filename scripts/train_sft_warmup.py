@@ -19,10 +19,11 @@ dataset = dataset.select(range(500))
 
 tok_counts = []
 for row in dataset:
-    toks = tokenizer.apply_chat_template( 
-        row['messages'],
-        tokenize=True
-    )
+    msgs = [
+        {"role": "user", "content": row["prompt"]},
+        {"role": "assistant", "content": row["completion"]},
+    ]
+    toks = tokenizer.apply_chat_template(msgs, tokenize=True)
     tok_counts.append(len(toks))
 
 print(f"Dataset size: {len(tok_counts)}")

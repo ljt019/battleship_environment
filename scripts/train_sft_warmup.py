@@ -19,7 +19,8 @@ dataset = dataset.select(range(500))
 # Print token count statistics
 tok_counts = []
 for row in dataset:
-    messages = row['prompt'] + row['completion']
+    # count tokens in (prompt, completion)
+    messages = row['prompt'] + row['completion']  # type: ignore
     toks = tokenizer.apply_chat_template(
         messages,
         tokenize=True
@@ -57,7 +58,7 @@ def main():
     trainer = SFTTrainer(
         model=model,
         args=args,
-        train_dataset=dataset,
+        train_dataset=dataset,  # type: ignore
     )
     trainer.train()
 

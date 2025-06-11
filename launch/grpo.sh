@@ -7,8 +7,6 @@ source "${SCRIPT_DIR}/setup.sh"
 
 setup_uv
 
-huggingface-cli login
-
 setup_huggingface
 
 setup_wandb

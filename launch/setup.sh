@@ -3,8 +3,8 @@
 setup_tmux() {
     if ! command -v tmux &>/dev/null; then
         echo "Installing tmux..."
-        sudo apt-get update -y
-        sudo apt-get install -y tmux
+        apt-get update -y
+        apt-get install -y tmux
     else
         echo "tmux already installed"
     fi

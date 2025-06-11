@@ -7,9 +7,11 @@ source "${SCRIPT_DIR}/setup.sh"
 
 setup_uv
 
+setup_huggingface
+
 setup_dummy_openai_api_key
 
 CUDA_VISIBLE_DEVICES=0 uv run vf-vllm \
   --model 'ljt019/Qwen3-1.7B-Battleship-SFT' \
   --port 8000 \
-  --max-model-len 15310)
+  --max-model-len 15310

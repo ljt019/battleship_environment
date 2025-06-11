@@ -131,3 +131,55 @@ class BattleshipGame:
         Returns list of available (unknown) cells.
         """
         return [pos for pos, val in self.board.items() if val == "?"]
+
+    def render_compact(self):
+        """Coordinate=value listing, e.g. a1=. b1=. … j10=o"""
+        lines = []
+        for r in self.rows:
+            cells = []
+            for c in self.cols:
+                val = self.board[f"{c}{r}"]
+                cells.append(f"{c}{r}={val}")
+            lines.append(" ".join(cells))
+        return "\n".join(lines)
+
+    @staticmethod
+    def compact_to_pretty(compact_str):
+        """Convert the coordinate=value compact board (from `render_compact`) into a
+        bracketed grid similar to `render()` but using a dot (.) for unknown squares.
+
+        Example compact line:  "a1=? b1=o c1=x … j1=?"
+        Result pretty row:     " 1 [.][o][x]…[.]"
+        """
+
+        if not compact_str.strip():
+            return compact_str  # Nothing to convert
+
+        # Build a dictionary of cell -> value
+        cell_map = {}
+        for token in compact_str.replace("\n", " ").split():
+            if "=" not in token:
+                continue
+            coord, val = token.split("=", 1)
+            cell_map[coord.lower()] = val
+
+        if not cell_map:
+            return compact_str  # Unexpected format; bail out
+
+        # Determine columns and rows present
+        cols = sorted({c[0] for c in cell_map.keys()})
+        rows = sorted({int(c[1:]) for c in cell_map.keys()})
+
+        # Header line with spaced column letters for fixed-width readability
+        header = "    " + " ".join(cols)
+        pretty_lines = [header]
+
+        for r in rows:
+            row_chars = []
+            for col in cols:
+                char = cell_map.get(f"{col}{r}", "?")
+                display = "." if char == "?" else char
+                row_chars.append(display)
+            pretty_lines.append(f"{str(r).rjust(2)}  {' '.join(row_chars)}")
+
+        return "\n".join(pretty_lines)

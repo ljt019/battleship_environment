@@ -3,8 +3,9 @@ import os
 import verifiers as vf
 from datasets import load_dataset
 from trl import SFTTrainer, SFTConfig
+from verifiers.inference.vllm_client import VLLMClient
+from transformers import TrainerCallback
 
-# Add project root to path so we can import from src
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scripts.config import MODEL_SIZE, BASE_MODEL_NAME, LEARNING_RATE, NUM_TRAIN_EPOCHS, BATCH_SIZE, SFT_GRADIENT_ACCUMULATION_STEPS, MAX_COMPLETION_LENGTH, SFT_OUTPUT_DIR

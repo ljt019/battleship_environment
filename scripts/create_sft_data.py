@@ -2,22 +2,20 @@ import time
 import sys
 import os
 from openai import OpenAI
+import re
 
-# Add project root to path so we can import from src
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.battleship_grpo import BattleshipEnv
-from scripts.config import DATASET_MODEL_SIZE, NUM_DATASET_SAMPLES, MAX_TOKENS_API, MAX_CONCURRENT_API, SEED, MAX_TURNS, DATASET_PATH, HUB_DATASET_NAME, VLLM_BASE_URL, VLLM_API_KEY, SFT_MODEL_NAME
+from scripts.config import NUM_DATASET_SAMPLES, MAX_TOKENS_API, MAX_CONCURRENT_API, SEED, MAX_TURNS, DATASET_PATH, OPENROUTER_BASE_URL, OPENROUTER_API_KEY, OPENROUTER_MODEL
 
 def main():
-    # Setup vLLM client
     client = OpenAI(
-        base_url=VLLM_BASE_URL,
-        api_key=VLLM_API_KEY
+        base_url=OPENROUTER_BASE_URL,
+        api_key=OPENROUTER_API_KEY
     )
 
     vf_env = BattleshipEnv(
-        num_samples=NUM_DATASET_SAMPLES,
         seed=SEED,
         max_concurrent=MAX_CONCURRENT_API,
         max_turns=MAX_TURNS
@@ -29,8 +27,8 @@ def main():
     }
 
     print(f"Starting test data generation")
-    print(f"Target: Playing {NUM_DATASET_SAMPLES} games and keeping the top 40%")
-    print(f"Model: Qwen3-{DATASET_MODEL_SIZE}")
+    print(f"Target: Playing {NUM_DATASET_SAMPLES} games and keeping the top 50%")
+    print(f"Model: {OPENROUTER_MODEL}")
     print(f"Max turns per game: {MAX_TURNS}")
     print()
 
@@ -39,7 +37,7 @@ def main():
     # Generate test batch
     results = vf_env.evaluate(
         client=client,
-        model=SFT_MODEL_NAME,
+        model=OPENROUTER_MODEL,
         sampling_args=sampling_args,
         num_samples=NUM_DATASET_SAMPLES,
     )
@@ -55,12 +53,55 @@ def main():
 
     # As long as there are at least 5 games, take the top 40%
     if len(dataset) >= 5: 
-        top_count = max(1, len(dataset) * 2 // 5)  # 40% = 2/5
+        top_count = max(1, len(dataset) // 2)  # 50%
         dataset = dataset.sort("reward", reverse=True).select(range(top_count))
-        print(f"Dataset size after filtering (top 40% = {top_count}): {len(dataset)}")
+        print(f"Dataset size after filtering (top 50% = {top_count}): {len(dataset)}")
     else:
         dataset = dataset.sort("reward", reverse=True)
         print(f"Got fewer games than expected, keeping all {len(dataset)}")
+
+    # Convert to per-turn samples (latest board + move)
+    from datasets import Dataset
+
+    turn_rows = []
+
+    for example in dataset:
+        full_prompt = example["prompt"]
+        full_completion = example["completion"]
+        msgs = full_prompt + full_completion
+        episode_reward = example["reward"]
+
+        static_msgs = full_prompt[:2]
+
+        for i, m in enumerate(msgs):
+            if m.get("role") != "assistant":
+                continue
+
+            board_msg = None
+            for j in range(i - 1, -1, -1):
+                if msgs[j].get("role") == "user" and "<board>" in msgs[j].get("content", ""):
+                    board_msg = msgs[j]
+                    break
+
+            if board_msg is None:
+                continue
+
+            prompt_turn = static_msgs
+            completion_turn = [board_msg, m]
+            turn_rows.append({
+                "prompt": prompt_turn,
+                "completion": completion_turn,
+                "reward": episode_reward,
+                "answer": example.get("answer", ""),
+                "task": example.get("task", None),
+            })
+
+    dataset = Dataset.from_list(turn_rows)
+    print(f"Per-turn dataset size: {len(dataset)}")
+
+    if len(dataset) == 0:
+        print("No valid per-turn samples generated after format filtering. Exiting early.")
+        return
 
     # Show quality stats
     rewards = dataset["reward"]

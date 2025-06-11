@@ -19,23 +19,22 @@ def main():
             win_rate = sum(1 for r in rewards if r > 0.5) / len(rewards) * 100
             print(f"New samples - Average reward: {avg_reward:.3f}, Win rate: {win_rate:.1f}%")
         
-        # Try to load existing dataset from hub
+        # Merge with existing remote dataset if it already exists
         try:
-            print(f"Loading existing dataset from {HUB_DATASET_NAME}")
-            existing_dataset = load_dataset(HUB_DATASET_NAME, split='train')
-            print(f"Found {len(existing_dataset)} existing samples")
-            
-            # Concatenate datasets
-            combined_dataset = concatenate_datasets([existing_dataset, local_dataset])
-            print(f"Combined dataset: {len(combined_dataset)} total samples")
-            
+            print(f"Attempting to load existing dataset from {HUB_DATASET_NAME}")
+            remote_dataset = load_dataset(HUB_DATASET_NAME, split="train")
+            print(f"Found existing dataset with {len(remote_dataset)} rows – merging")
+
+            combined_dataset = concatenate_datasets([remote_dataset, local_dataset])
+            print(f"Combined dataset size: {len(combined_dataset)} rows")
+
         except Exception as e:
-            print(f"No existing dataset found, creating new one: {e}")
+            print(f"No existing dataset found or failed to load ({e}). Creating new repo.")
             combined_dataset = local_dataset
-        
-        print(f"Uploading to {HUB_DATASET_NAME}")
-        combined_dataset.push_to_hub(HUB_DATASET_NAME)
-        print("Upload complete")
+
+        print(f"Pushing {len(combined_dataset)} rows to {HUB_DATASET_NAME} (will create a new commit)")
+        combined_dataset.push_to_hub(HUB_DATASET_NAME, private=False, token=None, split='train')
+        print("Upload complete – remote repository updated")
         
     except FileNotFoundError:
         print(f"Error: Dataset not found at {DATASET_PATH}")

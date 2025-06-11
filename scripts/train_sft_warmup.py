@@ -58,7 +58,6 @@ def main():
         model=model,
         args=args,
         train_dataset=dataset,
-        tokenizer=tokenizer,
     )
     trainer.train()
 

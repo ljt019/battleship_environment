@@ -20,7 +20,7 @@ GRPO_RUN_NAME = f"battleship-grpo-{MODEL_SIZE}"
 # Battleship Game Environment
 # ----------------------------
 
-MAX_TURNS = 100  
+MAX_TURNS = 50  
 SEED = 82 
 
 # ----------------------------
@@ -64,7 +64,7 @@ DATASET_MODEL_SIZE = "14B"
 # API Configuration
 # ----------------------------
 
-MAX_CONCURRENT_API = 5
+MAX_CONCURRENT_API = 20
 MAX_TOKENS_API = 8192   
 
 # LM Studio

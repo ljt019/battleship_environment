@@ -13,6 +13,10 @@ from scripts.config import MODEL_SIZE, BASE_MODEL_NAME, LEARNING_RATE, NUM_TRAIN
 model, tokenizer = vf.get_model_and_tokenizer(BASE_MODEL_NAME, use_liger=False)
 dataset = load_dataset('ljt019/battleship-sft', split='train')
 
+# split top 500 highest reward samples for warmup 
+dataset = dataset.sort("reward", reverse=True)
+dataset = dataset.select(range(500))    
+
 tok_counts = []
 for row in dataset:
     toks = tokenizer.apply_chat_template( 

@@ -7,6 +7,4 @@
 CUDA_VISIBLE_DEVICES=0 uv run vf-vllm \
   --model 'ljt019/Qwen3-1.7B-Battleship-SFT' \
   --port 8000 \
-  --tensor-parallel-size 1 \
-  --gpu-memory-utilization 0.85 \
   --max-model-len 17336

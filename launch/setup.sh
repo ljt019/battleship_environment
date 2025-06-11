@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 setup_tmux() {
     if ! command -v tmux &>/dev/null; then

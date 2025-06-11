@@ -31,13 +31,12 @@ setup_uv() {
 }
 
 setup_huggingface() {
-  # Check if already logged in to Hugging Face
-    if ! uv run huggingface-cli whoami &>/dev/null; then
-        echo "Logging in to Hugging Face Hub..."
-        uv run huggingface-cli login
-    else
-        echo "Already logged in to Hugging Face Hub."
-    fi
+  if uv run huggingface-cli whoami 2>&1 | grep -q "Not logged in"; then
+      echo "Logging in to Hugging Face Hub..."
+      uv run huggingface-cli login
+  else
+      echo "Already logged in to Hugging Face Hub."
+  fi
 }
 
 setup_wandb() {

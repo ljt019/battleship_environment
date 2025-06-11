@@ -7,4 +7,4 @@
 CUDA_VISIBLE_DEVICES=0 uv run vf-vllm \
   --model 'ljt019/Qwen3-1.7B-Battleship-SFT' \
   --port 8000 \
-  --max-model-len 17336
+  --max-model-len 15310

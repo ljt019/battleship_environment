@@ -17,13 +17,13 @@ vf_env = BattleshipEnv(
 )
 
 training_args=vf.grpo_defaults(run_name=GRPO_RUN_NAME)
-training_args.num_iterations=1
+training_args.num_iterations=75
 training_args.per_device_train_batch_size=BATCH_SIZE
 training_args.num_generations=12
 training_args.gradient_accumulation_steps=GRPO_GRADIENT_ACCUMULATION_STEPS
 training_args.max_prompt_length=MAX_PROMPT_LENGTH
 training_args.max_completion_length=MAX_COMPLETION_LENGTH
-training_args.max_steps=100
+training_args.max_steps=15000
 training_args.mask_env_responses=True
 
 def main():

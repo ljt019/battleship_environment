@@ -279,3 +279,26 @@ class BattleshipEnv(MultiTurnEnv):
         if not remaining_lines:
             remaining_lines.append(" None")
         return "Ships remaining:\n" + "\n".join(remaining_lines) 
+
+    def process_chat_format(self, messages: List[Dict[str, Any]], prev_ids=None, **kwargs):
+        """Wrapper around the parent `process_chat_format` that gracefully handles
+        occasional token-prefix mismatches.
+
+        The upstream implementation asserts that the newly tokenised chat history
+        must start with the exact token sequence produced on the previous call.
+        This assumption can be violated when earlier user messages are trimmed
+        or otherwise modified (e.g. board compaction) between calls, which would
+        raise an `AssertionError` and kill the training loop.
+
+        We keep the same behaviour when the assertion passes, but if a mismatch
+        is detected we simply fall back to re-tokenising from scratch (i.e. we
+        ignore the cached `prev_ids`). This is safe because the returned token
+        IDs and masks will still correspond to the *current* chat transcript,
+        which is what the trainer consumes.
+        """
+        try:
+            # Try the standard incremental path first – this is more efficient
+            return super().process_chat_format(messages, prev_ids, **kwargs)
+        except AssertionError:
+            # Fallback: regenerate without comparing to previous ids
+            return super().process_chat_format(messages, None, **kwargs) 

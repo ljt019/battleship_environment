@@ -12,6 +12,6 @@ setup_huggingface
 setup_dummy_openai_api_key
 
 CUDA_VISIBLE_DEVICES=0 uv run vf-vllm \
-  --model 'ljt019/Qwen3-1.7B-Battleship-SFT' \
+  --model 'ljt019/Qwen3-1.7B-battleship-grpo' \
   --port 8000 \
   --max-model-len 18394

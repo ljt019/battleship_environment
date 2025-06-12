@@ -5,7 +5,20 @@ import verifiers as vf
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.battleship_grpo import BattleshipEnv
-from scripts.config import MODEL_SIZE, BATCH_SIZE, SFT_MODEL_NAME, GRPO_GRADIENT_ACCUMULATION_STEPS, MAX_PROMPT_LENGTH, MAX_COMPLETION_LENGTH, NUM_GRPO_SAMPLES, NUM_GRPO_EVAL_SAMPLES, MAX_TURNS, GRPO_RUN_NAME, MAX_CONCURRENT_API
+from scripts.config import (
+    MODEL_SIZE,
+    BATCH_SIZE,
+    SFT_MODEL_NAME,
+    GRPO_GRADIENT_ACCUMULATION_STEPS,
+    MAX_PROMPT_LENGTH,
+    MAX_COMPLETION_LENGTH,
+    NUM_GRPO_SAMPLES,
+    NUM_GRPO_EVAL_SAMPLES,
+    MAX_TURNS,
+    GRPO_RUN_NAME,
+    MAX_CONCURRENT_API,
+    GRPO_NUM_GENERATIONS,
+)
 
 model, tokenizer = vf.get_model_and_tokenizer(SFT_MODEL_NAME)
 
@@ -19,7 +32,10 @@ vf_env = BattleshipEnv(
 training_args=vf.grpo_defaults(run_name=GRPO_RUN_NAME)
 training_args.num_iterations=75
 training_args.per_device_train_batch_size=BATCH_SIZE
-training_args.num_generations=12
+# Each prompt will generate `num_generations` completions per rollout.
+# This **must** match the value used inside GRPOTrainer's async batch generator.
+# We currently create 4 completions per prompt, so keep these in sync.
+training_args.num_generations=GRPO_NUM_GENERATIONS
 training_args.gradient_accumulation_steps=GRPO_GRADIENT_ACCUMULATION_STEPS
 training_args.max_prompt_length=MAX_PROMPT_LENGTH
 training_args.max_completion_length=MAX_COMPLETION_LENGTH

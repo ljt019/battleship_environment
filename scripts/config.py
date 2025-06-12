@@ -64,7 +64,7 @@ DATASET_MODEL_SIZE = "14B"
 # API Configuration
 # ----------------------------
 
-MAX_CONCURRENT_API = 20
+MAX_CONCURRENT_API = 8
 MAX_TOKENS_API = 8192   
 
 # LM Studio
@@ -80,3 +80,12 @@ OPENROUTER_MODEL = "deepseek/deepseek-chat-v3-0324"
 # vLLM
 VLLM_BASE_URL = "http://localhost:8000/v1" 
 VLLM_API_KEY = "token-abc123"  
+
+# ----------------------------
+# GRPO generation settings
+# ----------------------------
+
+# Number of completions ("generations") to produce per prompt during GRPO training.
+# This value is used by both the async batch generator and the Trainer when
+# reshaping reward tensors – keep it in one place to avoid mismatches.
+GRPO_NUM_GENERATIONS = 4  

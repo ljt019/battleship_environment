@@ -170,8 +170,10 @@ class BattleshipGame:
         cols = sorted({c[0] for c in cell_map.keys()})
         rows = sorted({int(c[1:]) for c in cell_map.keys()})
 
-        # Header line with spaced column letters for fixed-width readability
-        header = "    " + " ".join(cols)
+        # Compute width of row labels (e.g. 1–10)
+        row_label_width = len(str(max(rows)))
+        # Header indent: row-label-width + 1 space so the first column letter aligns over the first cell
+        header = " " * (row_label_width) + " ".join(cols)
         pretty_lines = [header]
 
         for r in rows:
@@ -180,6 +182,7 @@ class BattleshipGame:
                 char = cell_map.get(f"{col}{r}", "?")
                 display = "." if char == "?" else char
                 row_chars.append(display)
-            pretty_lines.append(f"{str(r).rjust(2)}  {' '.join(row_chars)}")
+            # Row label aligned to the same width, followed by a single space
+            pretty_lines.append(f"{str(r).rjust(row_label_width)} {' '.join(row_chars)}")
 
         return "\n".join(pretty_lines)

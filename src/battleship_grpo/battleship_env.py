@@ -211,14 +211,15 @@ class BattleshipEnv(MultiTurnEnv):
                 completion.append(env_msg)
             
             # Compact the conversation history so that only the most recent
-            # board state is sent to the model. This dramatically limits token
-            # growth over many turns without altering the semantic content of
-            # the dialogue for the assistant.
+            # board state is preserved *in place*. This keeps the prompt
+            # length bounded **and** guarantees that the tokens seen by the
+            # model match the tokens later processed by `process_chat_format`,
+            # preventing KL spikes due to token-mismatch.
 
-            compact_messages = self._compact_conversation_history(messages)
+            messages = self._compact_conversation_history(messages)
 
             response = self.get_model_response(
-                prompt=compact_messages,
+                prompt=messages,
                 client=client,
                 model=model,
                 sampling_args=sampling_args,

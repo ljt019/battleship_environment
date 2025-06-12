@@ -7,7 +7,7 @@ import os
 MODEL_SIZE = "1.7B"
 BASE_MODEL_NAME = f"willcb/Qwen3-{MODEL_SIZE}"  
 SFT_MODEL_NAME = f"ljt019/Qwen3-{MODEL_SIZE}-Battleship-SFT" 
-GRPO_MODEL_NAME = f"ljt019/Qwen3-{MODEL_SIZE}-Battleship-GRPO"  
+GRPO_MODEL_NAME = f"ljt019/Qwen3-{MODEL_SIZE}-Battleship-GRPO-beta"  
 
 # ----------------------------
 # WANDB Run Names

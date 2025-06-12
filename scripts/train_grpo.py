@@ -25,7 +25,7 @@ from scripts.config import (
 )
 
 # Load the model and immediately cast to bfloat16 to halve memory usage for activations/gradients.
-model, tokenizer = vf.get_model_and_tokenizer(SFT_MODEL_NAME)
+model, tokenizer = vf.get_model_and_tokenizer("ljt019/Qwen3-1.7B-battleship-grpo")
 model = model.to(torch.bfloat16)
 
 vf_env = BattleshipEnv(
@@ -52,9 +52,10 @@ training_args.gradient_checkpointing = True  # save memory at the cost of extra 
 training_args.beta = 0.05  # stronger KL penalty to keep divergence in check
 training_args.learning_rate = 5e-7  # slightly lower LR for stability
 training_args.save_strategy = "steps"
-training_args.save_steps = 100
-training_args.save_total_limit = 3
+training_args.save_steps = 1000
+training_args.save_total_limit = 6
 training_args.vllm_server_host = "127.0.0.1"
+training_args.sync_with_vllm = False
 
 def main():
     trainer = vf.GRPOTrainer(
@@ -63,7 +64,7 @@ def main():
         env=vf_env,
         args=training_args,
         push_to_hub=True,
-        hub_model_id=f"Qwen3-{MODEL_SIZE}-Battleship-GRPO",
+        hub_model_id=f"Qwen3-{MODEL_SIZE}-Battleship-GRPO-beta",
     )
     trainer.train()
 

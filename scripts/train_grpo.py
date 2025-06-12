@@ -1,5 +1,9 @@
 import sys
 import os
+# Enable PyTorch allocator to reuse memory across segments
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
+import torch
 import verifiers as vf
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,7 +24,9 @@ from scripts.config import (
     GRPO_NUM_GENERATIONS,
 )
 
+# Load the model and immediately cast to bfloat16 to halve memory usage for activations/gradients.
 model, tokenizer = vf.get_model_and_tokenizer(SFT_MODEL_NAME)
+model = model.to(torch.bfloat16)
 
 vf_env = BattleshipEnv(
     num_samples=NUM_GRPO_SAMPLES, 
@@ -41,6 +47,8 @@ training_args.max_prompt_length=MAX_PROMPT_LENGTH
 training_args.max_completion_length=MAX_COMPLETION_LENGTH
 training_args.max_steps=15000
 training_args.mask_env_responses=True
+training_args.bf16 = True  # enable automatic mixed-precision training (bf16)
+training_args.gradient_checkpointing = True  # save memory at the cost of extra compute
 
 def main():
     trainer = vf.GRPOTrainer(

@@ -27,9 +27,9 @@ SEED = 82
 # General Training Configuration
 # ----------------------------
 
-BATCH_SIZE = 2  # Batch size per device
-MAX_PROMPT_LENGTH = 1024
-MAX_COMPLETION_LENGTH = 8192
+BATCH_SIZE = 1  # Reduced batch size to lower memory footprint
+MAX_PROMPT_LENGTH = 768
+MAX_COMPLETION_LENGTH = 2048
 
 # ----------------------------
 # GRPO Training Configuration
@@ -38,7 +38,7 @@ MAX_COMPLETION_LENGTH = 8192
 NUM_GRPO_SAMPLES = 2000 
 NUM_GRPO_EVAL_SAMPLES = 20
 
-GRPO_GRADIENT_ACCUMULATION_STEPS = 4  
+GRPO_GRADIENT_ACCUMULATION_STEPS = 8  
 
 # ----------------------------
 # SFT Training Configuration
@@ -88,4 +88,4 @@ VLLM_API_KEY = "token-abc123"
 # Number of completions ("generations") to produce per prompt during GRPO training.
 # This value is used by both the async batch generator and the Trainer when
 # reshaping reward tensors – keep it in one place to avoid mismatches.
-GRPO_NUM_GENERATIONS = 4  
+GRPO_NUM_GENERATIONS = 2  

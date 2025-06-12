@@ -210,12 +210,15 @@ class BattleshipEnv(MultiTurnEnv):
                 messages.append(env_msg)
                 completion.append(env_msg)
             
-            # Feed the full conversation history (without additional compaction) to ensure
-            # that the tokens seen by the model match exactly the tokens that will later
-            # be processed by the verifiers library. This prevents chat-format
-            # tokenization mismatches detected by `process_chat_format`.
+            # Compact the conversation history so that only the most recent
+            # board state is sent to the model. This dramatically limits token
+            # growth over many turns without altering the semantic content of
+            # the dialogue for the assistant.
+
+            compact_messages = self._compact_conversation_history(messages)
+
             response = self.get_model_response(
-                prompt=messages,
+                prompt=compact_messages,
                 client=client,
                 model=model,
                 sampling_args=sampling_args,

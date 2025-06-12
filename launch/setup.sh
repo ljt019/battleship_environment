@@ -15,19 +15,22 @@ setup_uv() {
     if ! command -v uv &> /dev/null; then
         echo "Installing uv..."
         curl -LsSf https://astral.sh/uv/install.sh | sh
+        # Add the default installation path to PATH so that the newly
+        # installed binary is immediately available to the rest of this script
         export PATH="$HOME/.local/bin:$PATH"
+
+        # Verify that the installation succeeded
         if ! command -v uv &> /dev/null; then
             echo "Error: uv installation failed or not found in PATH"
             return 1
-
-        uv sync
-        uv pip install flash-attn --no-build-isolation
         fi
-    else
-        uv sync
-        uv pip install flash-attn --no-build-isolation
-        echo "uv already installed"
     fi
+
+    # At this point uv is guaranteed to be available
+    echo "Synchronising Python dependencies with uv..."
+    uv sync
+    echo "Installing flash-attn via uv..."
+    uv pip install flash-attn --no-build-isolation
 }
 
 setup_huggingface() {

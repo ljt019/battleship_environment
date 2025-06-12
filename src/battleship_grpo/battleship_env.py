@@ -280,25 +280,47 @@ class BattleshipEnv(MultiTurnEnv):
             remaining_lines.append(" None")
         return "Ships remaining:\n" + "\n".join(remaining_lines) 
 
-    def process_chat_format(self, messages: List[Dict[str, Any]], prev_ids=None, **kwargs):
-        """Wrapper around the parent `process_chat_format` that gracefully handles
-        occasional token-prefix mismatches.
-
-        The upstream implementation asserts that the newly tokenised chat history
-        must start with the exact token sequence produced on the previous call.
-        This assumption can be violated when earlier user messages are trimmed
-        or otherwise modified (e.g. board compaction) between calls, which would
-        raise an `AssertionError` and kill the training loop.
-
-        We keep the same behaviour when the assertion passes, but if a mismatch
-        is detected we simply fall back to re-tokenising from scratch (i.e. we
-        ignore the cached `prev_ids`). This is safe because the returned token
-        IDs and masks will still correspond to the *current* chat transcript,
-        which is what the trainer consumes.
+    def process_chat_format(self, prompt, completion, processing_class, mask_env_responses: bool = False):
+        """Override the parent `process_chat_format` to tolerate chat-history
+        divergence. We first attempt the standard incremental-prefix path from
+        the superclass. If it raises an `AssertionError` (token prefix
+        mismatch), we recompute the tokenisation from scratch while preserving
+        the same masking semantics.
         """
         try:
-            # Try the standard incremental path first – this is more efficient
-            return super().process_chat_format(messages, prev_ids, **kwargs)
+            # Fast path – just delegate to the parent implementation
+            return super().process_chat_format(prompt, completion, processing_class, mask_env_responses)
         except AssertionError:
-            # Fallback: regenerate without comparing to previous ids
-            return super().process_chat_format(messages, None, **kwargs) 
+            # Slow path – rebuild tokenisation without the strict prefix check
+            prompt_text = processing_class.apply_chat_template(
+                prompt, tokenize=False, add_generation_prompt=True
+            )
+            assert isinstance(prompt_text, str)
+            prompt_ids = processing_class.encode(prompt_text)
+            prompt_mask = [1] * len(prompt_ids)
+
+            completion_ids = []
+            completion_mask = []
+            prev_ids = prompt_ids
+
+            for i, msg in enumerate(completion):
+                conversation_prefix = prompt + completion[: i + 1]
+                prefix_text = processing_class.apply_chat_template(
+                    conversation_prefix, tokenize=False, add_generation_prompt=False
+                )
+                assert isinstance(prefix_text, str)
+                current_ids = processing_class.encode(prefix_text)
+                new_tokens = current_ids[len(prev_ids) :]
+                completion_ids.extend(new_tokens)
+
+                # Apply the same masking rules as the parent implementation
+                if msg["role"] == "assistant":
+                    msg_mask = [1] * len(new_tokens)
+                elif msg["role"] != "assistant" and mask_env_responses:
+                    msg_mask = [0] * len(new_tokens)
+                else:
+                    msg_mask = [1] * len(new_tokens)
+                completion_mask.extend(msg_mask)
+                prev_ids = current_ids
+
+            return prompt_ids, prompt_mask, completion_ids, completion_mask 

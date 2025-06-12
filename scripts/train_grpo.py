@@ -49,6 +49,12 @@ training_args.max_steps=5000
 training_args.mask_env_responses=True
 training_args.bf16 = True  # enable automatic mixed-precision training (bf16)
 training_args.gradient_checkpointing = True  # save memory at the cost of extra compute
+training_args.beta = 0.05  # stronger KL penalty to keep divergence in check
+training_args.learning_rate = 5e-7  # slightly lower LR for stability
+training_args.save_strategy = "steps"
+training_args.save_steps = 100
+training_args.save_total_limit = 3
+training_args.vllm_server_host = "127.0.0.1"
 
 def main():
     trainer = vf.GRPOTrainer(

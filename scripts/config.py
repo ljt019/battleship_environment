@@ -28,8 +28,8 @@ SEED = 82
 # ----------------------------
 
 BATCH_SIZE = 1  # Reduced batch size to lower memory footprint
-MAX_PROMPT_LENGTH = 768
-MAX_COMPLETION_LENGTH = 2048
+MAX_PROMPT_LENGTH = 1024
+MAX_COMPLETION_LENGTH = 8192
 
 # ----------------------------
 # GRPO Training Configuration

@@ -54,6 +54,7 @@ training_args.learning_rate = 5e-7  # slightly lower LR for stability
 training_args.save_strategy = "steps"
 training_args.save_steps = 50
 training_args.save_total_limit = 10
+training_args.vllm_server_host="127.0.0.1"
 
 def main():
     trainer = vf.GRPOTrainer(

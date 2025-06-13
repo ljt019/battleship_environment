@@ -36,7 +36,7 @@ vf_env = BattleshipEnv(
 )
 
 training_args=vf.grpo_defaults(run_name=GRPO_RUN_NAME)
-training_args.num_iterations=75
+training_args.num_iterations=200
 training_args.per_device_train_batch_size=BATCH_SIZE
 # Each prompt will generate `num_generations` completions per rollout.
 # This **must** match the value used inside GRPOTrainer's async batch generator.

@@ -52,8 +52,8 @@ training_args.gradient_checkpointing = True  # save memory at the cost of extra 
 training_args.beta = 0.05  # stronger KL penalty to keep divergence in check
 training_args.learning_rate = 5e-7  # slightly lower LR for stability
 training_args.save_strategy = "steps"
-training_args.save_steps = 1000
-training_args.save_total_limit = 15
+training_args.save_steps = 50
+training_args.save_total_limit = 10
 
 def main():
     trainer = vf.GRPOTrainer(

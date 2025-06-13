@@ -1,19 +1,10 @@
 #!/usr/bin/env python3
 """Upload a Battleship-GRPO checkpoint directory to the Hugging Face Hub.
 
-Usage
------
-$ python scripts/upload_checkpoint.py \
-    --ckpt_dir outputs/battleship-grpo-1.7b \
-    --repo_id ljt019/Qwen3-1.7B-Battleship-GRPO \
-    [--private] [--token YOUR_HF_TOKEN]
-
-If `--token` is omitted the script falls back to the `HF_TOKEN` environment
-variable (recommended).  Re-runs only push changed files.
+Just edit the constants below to configure the upload.
 """
 from __future__ import annotations
 
-import argparse
 import os
 import sys
 from pathlib import Path
@@ -21,43 +12,45 @@ from typing import Optional
 
 from huggingface_hub import HfApi, HfFolder, upload_folder
 
+# ===== CONFIGURATION =====
+# Local checkpoint folder (must contain config.json, model*.bin, tokenizer files, etc)
+CKPT_DIR = "outputs/battleship-grpo-1.7B/checkpoint-150"
 
-def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Upload a checkpoint to HuggingFace Hub")
-    p.add_argument("--ckpt_dir", required=True, help="Local checkpoint folder (must contain config.json, model*.bin, tokenizer files, …)")
-    p.add_argument("--repo_id", required=True, help="Destination repo id, e.g. ljt019/Qwen3-1.7B-Battleship-GRPO")
-    p.add_argument("--token", default=None, help="HF access token; fallback to HF_TOKEN env var or cached login")
-    p.add_argument("--private", action="store_true", help="Create the repo as private")
-    return p.parse_args()
+# Destination repo id, e.g. ljt019/Qwen3-1.7B-Battleship-GRPO
+REPO_ID = "ljt019/Qwen3-1.7B-battleship-grpo-beta"
 
+# Set to True to create the repo as private
+PRIVATE = False
+
+# Optional: Set your HF token here, or use HF_TOKEN env var or cached login
+HF_TOKEN = None
+# ========================
 
 def ensure_token(token: Optional[str] = None) -> str:
     token = token or os.getenv("HF_TOKEN") or HfFolder.get_token()
     if not token:
-        sys.exit("[ERROR] No HuggingFace token provided. Pass --token or set HF_TOKEN env var or run `huggingface-cli login`. ")
+        sys.exit("[ERROR] No HuggingFace token provided. Set HF_TOKEN env var or run `huggingface-cli login`.")
     return token
 
-
 def main() -> None:
-    args = parse_args()
-    ckpt_path = Path(args.ckpt_dir).expanduser()
+    ckpt_path = Path(CKPT_DIR).expanduser()
     if not ckpt_path.exists():
         sys.exit(f"[ERROR] Checkpoint directory {ckpt_path} not found")
 
-    token = ensure_token(args.token)
+    token = ensure_token(HF_TOKEN)
     api = HfApi(token=token)
 
     # Create repo if needed (does nothing if exists and you have write access)
     api.create_repo(
-        repo_id=args.repo_id,
+        repo_id=REPO_ID,
         repo_type="model",
-        private=args.private,
+        private=PRIVATE,
         exist_ok=True,
     )
 
-    print(f"Uploading {ckpt_path} → https://huggingface.co/{args.repo_id} …")
+    print(f"Uploading {ckpt_path} → https://huggingface.co/{REPO_ID} …")
     upload_folder(
-        repo_id=args.repo_id,
+        repo_id=REPO_ID,
         folder_path=str(ckpt_path),
         path_in_repo=".",
         repo_type="model",
@@ -66,7 +59,6 @@ def main() -> None:
         ignore_patterns=["*.pt", "*.log", "*.tmp"],  # tweak as needed
     )
     print("✅ Upload complete.")
-
 
 if __name__ == "__main__":
     main() 

@@ -25,7 +25,7 @@ from scripts.config import (
 )
 
 # Load the model and immediately cast to bfloat16 to halve memory usage for activations/gradients.
-model, tokenizer = vf.get_model_and_tokenizer("ljt019/Qwen3-1.7B-battleship-grpo")
+model, tokenizer = vf.get_model_and_tokenizer("ljt019/Qwen3-1.7B-battleship-grpo-beta")
 model = model.to(torch.bfloat16)
 
 vf_env = BattleshipEnv(

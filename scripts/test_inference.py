@@ -29,7 +29,7 @@ from src.local_openai import LocalOpenAI
 # ----------------- CONFIG -------------------------------------------------- #
 # Name or path of the model to load
 #MODEL_NAME = "ljt019/Qwen3-1.7B-Battleship-SFT"
-MODEL_NAME = "ljt019/Qwen3-1.7B-battleship-grpo-beta"
+MODEL_NAME = "ljt019/Qwen3-1.7B-battleship-grpo"
 MAX_NEW_TOKENS = 2048
 TEMPERATURE = 0.7
 TOP_P = 0.9

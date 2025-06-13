@@ -17,7 +17,7 @@ from huggingface_hub import HfApi, HfFolder, upload_folder
 CKPT_DIR = "outputs/battleship-grpo-1.7B/checkpoint-1150"
 
 # Destination repo id, e.g. ljt019/Qwen3-1.7B-Battleship-GRPO
-REPO_ID = "ljt019/Qwen3-1.7B-battleship-grpo-beta"
+REPO_ID = "ljt019/Qwen3-1.7B-battleship-grpo"
 
 # Set to True to create the repo as private
 PRIVATE = False

@@ -16,5 +16,5 @@ CUDA_VISIBLE_DEVICES=0,1 uv run vf-vllm \
   --port 8000 \
   --host 127.0.0.1 \
   --max-model-len 22498 \
-  --tensor-parallel-size 2 \
-  --gpu-memory-utilization 0.8
+  --tensor-parallel-size 1 \
+  --gpu-memory-utilization 0.6

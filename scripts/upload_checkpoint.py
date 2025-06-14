@@ -14,7 +14,7 @@ from huggingface_hub import HfApi, HfFolder, upload_folder
 
 # ===== CONFIGURATION =====
 # Local checkpoint folder (must contain config.json, model*.bin, tokenizer files, etc)
-CKPT_DIR = "outputs/battleship-grpo-1.7B/checkpoint-150"
+CKPT_DIR = "outputs/battleship-grpo-1.7B/checkpoint-1100"
 
 # Destination repo id, e.g. ljt019/Qwen3-1.7B-Battleship-GRPO
 REPO_ID = "ljt019/Qwen3-1.7B-battleship-grpo"

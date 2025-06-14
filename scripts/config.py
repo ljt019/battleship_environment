@@ -20,7 +20,7 @@ GRPO_RUN_NAME = f"battleship-grpo-{MODEL_SIZE}"
 # Battleship Game Environment
 # ----------------------------
 
-MAX_TURNS = 50  
+MAX_TURNS = 4  
 SEED = 82 
 
 # ----------------------------
@@ -54,9 +54,9 @@ SFT_OUTPUT_DIR = "sft-battleship"
 # SFT Dataset Generation
 # ----------------------------
 
-NUM_DATASET_SAMPLES = 40  
+NUM_DATASET_SAMPLES = 1  
 DATASET_PATH = "datasets/battleship-sft"  
-HUB_DATASET_NAME = "ljt019/battleship-sft-reformat"  
+HUB_DATASET_NAME = "ljt019/battleship-sft-new-format"  
 
 DATASET_MODEL_SIZE = "14B"
 
@@ -89,3 +89,24 @@ VLLM_API_KEY = "token-abc123"
 # This value is used by both the async batch generator and the Trainer when
 # reshaping reward tensors – keep it in one place to avoid mismatches.
 GRPO_NUM_GENERATIONS = 2  
+
+'''
+<result move="a1" value="miss" />
+<remaining carrier="1" battleship="1" cruiser="0" submarine="1" destroyer="1" />
+<state hits="j9" misses="a1" sunk="d5 e5" unknown="98" />
+<grid> 
+   a b c d e f g h i j
+ 1 o ? ? ? ? ? ? ? ? ?
+ 2 ? ? ? ? ? ? ? ? ? ?
+ 3 ? ? ? ? ? ? ? ? ? ?
+ 4 ? ? ? ? ? ? ? ? ? ?
+ 5 ? ? ? x x ? ? ? ? ?
+ 6 ? ? ? ? ? ? ? ? ? ?
+ 7 ? ? ? ? ? ? ? ? ? ?
+ 8 ? ? ? ? ? ? ? ? ? ?
+ 9 ? ? ? ? ? ? ? ? ? x
+10 ? ? ? ? ? ? ? ? ? ?
+</grid>
+
+Next Move:
+''' 

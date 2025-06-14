@@ -12,28 +12,49 @@ from verifiers.rubrics import Rubric
 from .battleship_game import BattleshipGame
 from .rewards import setup_reward_rubric
 
-BATTLESHIP_SYSTEM_PROMPT = """You are playing a game of Battleship. The current board will be provided inside <board> … </board> tags as a compact grid (described in the rules). Use it to plan and execute your next shot. 
+BATTLESHIP_SYSTEM_PROMPT = """You are playing Battleship.
 
-Respond ONLY in the following format:
+After every turn the environment will send ONE user message that contains the current game state in tagged form:
+
+  <result move=\"c3\" value=\"hit|miss|sunk|invalid|victory\"/>
+  <remaining carrier=\"N\" battleship=\"N\" cruiser=\"N\" submarine=\"N\" destroyer=\"N\" />
+  <state hits=\"a5 e4\" misses=\"b1 d6\" sunk=\"d5 e5\" unknown=\"83\" />
+  <grid>
+   abcdefghij
+ 1 ? ? ? ? ? ? ? ? ? ?
++  … 9 more rows …
+ 10 ? ? ? ? ? ? ? ? ? ?
+  </grid>
+
+Rules for you:
+1. Inside <think> reference ONLY coordinates that appear in hits, misses, or sunk lists.
+2. Always finish ships adjacent to any coordinate in hits before exploring new areas.
+3. Keep <think> ≤ 75 tokens.
+4. Respond EXACTLY in the following format and nothing else:
+
 <think>
-Concise reasoning about what move to take next.
+Concise reasoning about the next best shot.
 </think>
 
 <guess>[coordinate]</guess>"""
 
-BATTLESHIP_RULES = """Your goal is to sink all enemy ships by guessing their locations.
+BATTLESHIP_RULES = """Goal
+———
+Sink all enemy ships.  Coordinate = column letter a-j + row number 1-10 (e.g., g3).
 
-Board format (inside <board> tags):
-  • First line:  a-j column letters (e.g.  abcdefghij )
-  • Following lines: row number (1-10) immediately followed by ten single-character cells.
-    ? unknown   x hit   o miss   s sunk-ship part
+Symbols in <grid>
+  ? unknown   o miss   x hit (unsunk)   s sunk-ship part
 
-Strategy tips:
-- After a hit (x), probe adjacent squares to locate the full ship.
-- Use probability/spacing to target unexplored areas.
-- Ship sizes: Carrier(5), Battleship(4), Cruiser(3), Submarine(3), Destroyer(2).
+Per-turn tags
+  <result move=\"c3\" value=\"hit|miss|sunk|invalid|victory\"/>   outcome of your last shot
+  <remaining carrier=\"…\" …/>                                          live ship counts
+  <state hits=\"…\" misses=\"…\" sunk=\"…\" unknown=\"N\"/>        cell lists
+  <grid> header line + 10 rows </grid>                                  current board
 
-Make your next strategic move to sink all ships efficiently."""
+Ship sizes
+  Carrier 5 • Battleship 4 • Cruiser 3 • Submarine 3 • Destroyer 2
+
+Never guess a cell that is not "?" in the current grid."""
 
 
 class BattleshipEnv(MultiTurnEnv):
@@ -90,11 +111,15 @@ class BattleshipEnv(MultiTurnEnv):
             board_render = game.render_compact()
 
             ships_block = self._build_ships_remaining(game)
+            state_tag = self._build_state_tag(game)
+            remaining_tag = self._build_remaining_tag(game)
+            grid_str = self._build_ascii_grid(game)
             content = (
-                "Here's the starting board:\n\n"
-                "<board>\n" + board_render + "\n</board>\n\n" +
-                ships_block + "\n\n" +
-                "You are the player. Make your first move:"
+                "Here's the starting board:\n\n" +
+                remaining_tag + "\n" +
+                state_tag + "\n" +
+                "<grid>\n" + grid_str + "\n</grid>\n\n" +
+                "Next move:"
             )
             return {"role": "user", "content": content}, state
         
@@ -141,17 +166,22 @@ class BattleshipEnv(MultiTurnEnv):
             result = "MISS - Only water here."
         
         ships_block = self._build_ships_remaining(game)
+        state_tag = self._build_state_tag(game)
+        remaining_tag = self._build_remaining_tag(game)
+        grid_str = self._build_ascii_grid(game)
 
         # Generate response
         if game_over:
             content = (
-                f"{result}\n\n<board>\n{board_render}\n</board>\n\n"
-                f"{ships_block}\n\nVICTORY! You sunk all ships in {game.turn_count} moves!"
+                f"<result move=\"{coordinate}\" value=\"{'victory'}\"/>\n\n"
+                f"{remaining_tag}\n{state_tag}\n"
+                f"<grid>\n{grid_str}\n</grid>\n\nVICTORY! You sunk all ships in {game.turn_count} moves!"
             )
         else:
             content = (
-                f"{result}\n\n<board>\n{board_render}\n</board>\n\n"
-                f"{ships_block}\n\nNext move:"
+                f"<result move=\"{coordinate}\" value=\"{result.split()[0].lower()}\"/>\n\n"
+                f"{remaining_tag}\n{state_tag}\n"
+                f"<grid>\n{grid_str}\n</grid>\n\nNext move:"
             )
         
         return {"role": "user", "content": content}, state
@@ -161,21 +191,19 @@ class BattleshipEnv(MultiTurnEnv):
         compacted_messages = []
         last_board_message_idx = -1
         
-        # Find the last user message containing a <board> tag
+        # Find the last user message containing a <grid> tag (latest board)
         for i, msg in enumerate(messages):
-            if msg.get('role') == 'user' and '<board>' in msg.get('content', ''):
+            if msg.get('role') == 'user' and '<grid>' in msg.get('content', ''):
                 last_board_message_idx = i
         
         # Keep all messages, but replace old board states with just the feedback
         for i, msg in enumerate(messages):
             if msg.get('role') == 'user':
                 content = msg.get('content', '')
-                # If this is an old board state (not the most recent), strip the <board> block
-                if '<board>' in content and i < last_board_message_idx:
-                    lines = content.split('\n')
-                    feedback_line = lines[0] if lines else content
-                    compacted_content = f"{feedback_line}\nNext move:"
-                    compacted_messages.append({"role": "user", "content": compacted_content})
+                is_env_state = any(tag in content for tag in ('<grid>', '<state', '<remaining', '<result'))
+                # If this is an old environment state (not the most recent), drop it entirely
+                if is_env_state and i < last_board_message_idx:
+                    continue  # skip stale env message
                 else:
                     compacted_messages.append(msg)
             else:
@@ -283,6 +311,60 @@ class BattleshipEnv(MultiTurnEnv):
         if not remaining_lines:
             remaining_lines.append(" None")
         return "Ships remaining:\n" + "\n".join(remaining_lines) 
+
+    def _build_state_tag(self, game: "BattleshipGame") -> str:
+        """Return a <state/> tag listing hits, misses, sunk squares and unknown count."""
+        hits: list[str] = []
+        misses: list[str] = []
+        sunk: list[str] = []
+
+        for coord, val in game.board.items():
+            if val == "x":
+                hits.append(coord)
+            elif val == "o":
+                misses.append(coord)
+            elif val == "s":
+                sunk.append(coord)
+
+        hits_str = " ".join(sorted(hits))
+        misses_str = " ".join(sorted(misses))
+        sunk_str = " ".join(sorted(sunk))
+        return f"<state hits=\"{hits_str}\" misses=\"{misses_str}\" sunk=\"{sunk_str}\"/>"
+
+    def _build_remaining_tag(self, game: "BattleshipGame") -> str:
+        """Return <remaining …/> tag with counts for each ship type."""
+        counts = {"carrier": 0, "battleship": 0, "cruiser": 0, "submarine": 0, "destroyer": 0}
+        size3_seen = 0
+        for ship in game.ships:
+            if set(ship["hits"]) != set(ship["coords"]):
+                size = len(ship["coords"])
+                if size == 5:
+                    counts["carrier"] += 1
+                elif size == 4:
+                    counts["battleship"] += 1
+                elif size == 3:
+                    size3_seen += 1
+                    if size3_seen == 1:
+                        counts["cruiser"] += 1
+                    else:
+                        counts["submarine"] += 1
+                elif size == 2:
+                    counts["destroyer"] += 1
+        attrs = " ".join(f"{k}=\"{v}\"" for k, v in counts.items())
+        return f"<remaining {attrs} />"
+
+    def _build_ascii_grid(self, game: "BattleshipGame") -> str:
+        """Return ASCII grid string with header and rows."""
+        cols = game.cols  # 'abcdefghij'
+        header = " " + " ".join(cols)
+        lines = [header]
+        for r in game.rows:
+            row_cells = []
+            for c in cols:
+                val = game.board[f"{c}{r}"]
+                row_cells.append(val)
+            lines.append(f"{r.rjust(2)} {' '.join(row_cells)}")
+        return "\n".join(lines)
 
     def process_chat_format(self, prompt, completion, processing_class, mask_env_responses: bool = False):
         """Override the parent `process_chat_format` to tolerate chat-history

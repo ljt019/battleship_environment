@@ -51,11 +51,12 @@ def main():
     dataset = vf_env.make_dataset(results)
     print(f"\nDataset size before filtering: {len(dataset)}")
 
-    # As long as there are at least 5 games, take the top 40%
+    # As long as there are at least 5 games, take the top 75%
     if len(dataset) >= 5: 
-        top_count = max(1, len(dataset) // 2)  # 50%
+        import math
+        top_count = max(1, math.ceil(0.75 * len(dataset)))
         dataset = dataset.sort("reward", reverse=True).select(range(top_count))
-        print(f"Dataset size after filtering (top 50% = {top_count}): {len(dataset)}")
+        print(f"Dataset size after filtering (top 75% = {top_count}): {len(dataset)}")
     else:
         dataset = dataset.sort("reward", reverse=True)
         print(f"Got fewer games than expected, keeping all {len(dataset)}")
@@ -79,15 +80,17 @@ def main():
 
             board_msg = None
             for j in range(i - 1, -1, -1):
-                if msgs[j].get("role") == "user" and "<board>" in msgs[j].get("content", ""):
+                if msgs[j].get("role") == "user" and "<grid>" in msgs[j].get("content", ""):
                     board_msg = msgs[j]
                     break
 
             if board_msg is None:
                 continue
 
-            prompt_turn = static_msgs
-            completion_turn = [board_msg, m]
+            # Prompt for this sample = system + rules + latest board state
+            prompt_turn = static_msgs + [board_msg]
+            # Completion = ONLY the assistant's response for that turn
+            completion_turn = [m]
             turn_rows.append({
                 "prompt": prompt_turn,
                 "completion": completion_turn,

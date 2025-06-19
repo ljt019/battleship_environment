@@ -14,21 +14,19 @@ from .rewards import setup_reward_rubric
 
 BATTLESHIP_SYSTEM_PROMPT = """You are playing Battleship.
 
-After every turn the environment will send ONE user message that contains the current game state in tagged form:
+After every turn, the environment sends ONE user message containing the current game state in tagged form:
 
-  <result move=\"c3\" value=\"hit|miss|sunk|invalid|victory\"/>
-  <remaining carrier=\"N\" battleship=\"N\" cruiser=\"N\" submarine=\"N\" destroyer=\"N\" />
-  <state hits=\"a5 e4\" misses=\"b1 d6\" sunk=\"d5 e5\" unknown=\"83\" />
-  <grid>
-   abcdefghij
- 1 ? ? ? ? ? ? ? ? ? ?
-+  … 9 more rows …
- 10 ? ? ? ? ? ? ? ? ? ?
-  </grid>
+<result move="c3" value="hit|miss|sunk|invalid|victory"/>
+<remaining carrier="N" battleship="N" cruiser="N" submarine="N" destroyer="N"/>
+<state hits="a5 e4" misses="b1 d6" sunk="d5 e5" unknown="83"/>
+<grid>
+(? unknown, o miss, x hit, s sunk)
+10x10 grid representing current board state
+</grid>
 
 Rules for you:
-1. Inside <think> reference ONLY coordinates that appear in hits, misses, or sunk lists.
-2. Always finish ships adjacent to any coordinate in hits before exploring new areas.
+1. Inside <think>, reference ONLY coordinates appearing in the hits, misses, or sunk lists.
+2. Finish ships by guessing cells directly adjacent (up, down, left, right—no diagonals) to confirmed hits before exploring new areas.
 3. Keep <think> ≤ 75 tokens.
 4. Respond EXACTLY in the following format and nothing else:
 
@@ -40,22 +38,26 @@ Concise reasoning about the next best shot.
 
 BATTLESHIP_RULES = """Goal
 ———
-Sink all enemy ships.  Coordinate = column letter a-j + row number 1-10 (e.g., g3).
+Sink all enemy ships by guessing coordinates.
+
+Coordinate format
+  - Column letters (a-j) + row numbers (1-10), e.g., e5.
 
 Symbols in <grid>
   ? unknown   o miss   x hit (unsunk)   s sunk-ship part
 
-Per-turn tags
-  <result move=\"c3\" value=\"hit|miss|sunk|invalid|victory\"/>   outcome of your last shot
-  <remaining carrier=\"…\" …/>                                          live ship counts
-  <state hits=\"…\" misses=\"…\" sunk=\"…\" unknown=\"N\"/>        cell lists
-  <grid> header line + 10 rows </grid>                                  current board
+Per-turn tags (sent each turn)
+  - <result move="c3" value="hit|miss|sunk|invalid|victory"/> outcome of your last shot
+  - <remaining carrier="…" …/> ships still afloat
+  - <state hits="…" misses="…" sunk="…" unknown="N"/> status of guessed cells
+  - <grid> header line + 10 rows </grid> current board representation
 
 Ship sizes
-  Carrier 5 • Battleship 4 • Cruiser 3 • Submarine 3 • Destroyer 2
+  Carrier (5) • Battleship (4) • Cruiser (3) • Submarine (3) • Destroyer (2)
 
-Never guess a cell that is not "?" in the current grid."""
-
+Important rules
+  - NEVER guess a cell that isn't marked "?" (unknown) on the grid.
+  - Guessing previously guessed cells (marked o, x, or s) is invalid."""
 
 class BattleshipEnv(MultiTurnEnv):
     """
@@ -156,14 +158,14 @@ class BattleshipEnv(MultiTurnEnv):
         
         # Generate result message
         if invalid:
-            result = "INVALID MOVE - That square was already guessed or doesn't exist!"
+            result = "invalid"
         elif hit:
             if sunk:
-                result = "HIT AND SUNK! You destroyed an entire ship!"
+                result = "sunk"
             else:
-                result = "HIT! You found part of a ship - try adjacent squares!"
+                result = "hit"
         else:
-            result = "MISS - Only water here."
+            result = "miss"
         
         ships_block = self._build_ships_remaining(game)
         state_tag = self._build_state_tag(game)
@@ -173,13 +175,13 @@ class BattleshipEnv(MultiTurnEnv):
         # Generate response
         if game_over:
             content = (
-                f"<result move=\"{coordinate}\" value=\"{'victory'}\"/>\n\n"
+                f"<result move=\"{coordinate}\" value=\"victory\"/>\n"
                 f"{remaining_tag}\n{state_tag}\n"
                 f"<grid>\n{grid_str}\n</grid>\n\nVICTORY! You sunk all ships in {game.turn_count} moves!"
             )
         else:
             content = (
-                f"<result move=\"{coordinate}\" value=\"{result.split()[0].lower()}\"/>\n\n"
+                f"<result move=\"{coordinate}\" value=\"{result}\"/>\n"
                 f"{remaining_tag}\n{state_tag}\n"
                 f"<grid>\n{grid_str}\n</grid>\n\nNext move:"
             )
@@ -326,10 +328,17 @@ class BattleshipEnv(MultiTurnEnv):
             elif val == "s":
                 sunk.append(coord)
 
+        unknown_count = sum(1 for v in game.board.values() if v == "?")
+
         hits_str = " ".join(sorted(hits))
         misses_str = " ".join(sorted(misses))
         sunk_str = " ".join(sorted(sunk))
-        return f"<state hits=\"{hits_str}\" misses=\"{misses_str}\" sunk=\"{sunk_str}\"/>"
+        return (
+            f"<state hits=\"{hits_str}\" "
+            f"misses=\"{misses_str}\" "
+            f"sunk=\"{sunk_str}\" "
+            f"unknown=\"{unknown_count}\"/>"
+        )
 
     def _build_remaining_tag(self, game: "BattleshipGame") -> str:
         """Return <remaining …/> tag with counts for each ship type."""

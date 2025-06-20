@@ -1,10 +1,6 @@
-import sys
-import os
 import verifiers as vf
 from datasets import load_dataset
 from trl import SFTTrainer, SFTConfig
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import MODEL_SIZE, BASE_MODEL_NAME, LEARNING_RATE, NUM_TRAIN_EPOCHS, BATCH_SIZE, SFT_GRADIENT_ACCUMULATION_STEPS, MAX_COMPLETION_LENGTH, SFT_OUTPUT_DIR
 

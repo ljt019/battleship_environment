@@ -4,7 +4,7 @@ from datasets import load_from_disk, load_dataset, concatenate_datasets
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scripts.config import DATASET_PATH, HUB_DATASET_NAME
+from config import DATASET_PATH, HUB_DATASET_NAME
 
 def main():
     print(f"Loading local dataset from {DATASET_PATH}")

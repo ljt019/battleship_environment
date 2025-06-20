@@ -4,7 +4,7 @@ from datasets import load_from_disk
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scripts.config import DATASET_PATH, HUB_DATASET_NAME
+from config import DATASET_PATH, HUB_DATASET_NAME
 
 """Simple uploader: always overwrite the remote train split with the local dataset.
 Run with:  uv run scripts/upload_dataset_overwrite.py

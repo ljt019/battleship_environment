@@ -6,7 +6,7 @@ from openai import OpenAI
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.battleship_grpo import BattleshipEnv
-from scripts.config import SEED, MAX_TURNS, SFT_MODEL_NAME, VLLM_BASE_URL, VLLM_API_KEY, MAX_CONCURRENT_API, MAX_TOKENS_API
+from config import SEED, MAX_TURNS, SFT_MODEL_NAME, VLLM_BASE_URL, VLLM_API_KEY, MAX_CONCURRENT_API, MAX_TOKENS_API
 
 vf_env = BattleshipEnv(
     num_samples=100,

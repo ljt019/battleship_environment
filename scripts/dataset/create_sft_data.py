@@ -7,7 +7,7 @@ import re
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.battleship_grpo import BattleshipEnv
-from scripts.config import NUM_DATASET_SAMPLES, MAX_TOKENS_API, MAX_CONCURRENT_API, SEED, MAX_TURNS, DATASET_PATH, OPENROUTER_BASE_URL, OPENROUTER_API_KEY, OPENROUTER_MODEL
+from config import NUM_DATASET_SAMPLES, MAX_TOKENS_API, MAX_CONCURRENT_API, SEED, MAX_TURNS, DATASET_PATH, OPENROUTER_BASE_URL, OPENROUTER_API_KEY, OPENROUTER_MODEL
 
 def main():
     client = OpenAI(
@@ -66,7 +66,9 @@ def main():
 
     turn_rows = []
 
-    for example in dataset:
+    # Iterate through games while tracking their index so we can label each turn
+    for game_idx, example in enumerate(dataset, start=1):
+        turn_counter = 0  # Reset for each game
         full_prompt = example["prompt"]
         full_completion = example["completion"]
         msgs = full_prompt + full_completion
@@ -91,11 +93,16 @@ def main():
             prompt_turn = static_msgs + [board_msg]
             # Completion = ONLY the assistant's response for that turn
             completion_turn = [m]
+
+            # Update turn counter for this assistant move
+            turn_counter += 1
+
             turn_rows.append({
                 "prompt": prompt_turn,
                 "completion": completion_turn,
                 "reward": episode_reward,
-                "answer": example.get("answer", ""),
+                # Include game and turn numbers for easier reference
+                "answer": f"game {game_idx}, turn {turn_counter}",
                 "task": example.get("task", None),
             })
 

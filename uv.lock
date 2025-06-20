@@ -193,7 +193,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "huggingface-hub", specifier = ">=0.20.0" },
-    { name = "verifiers", extras = ["all"], specifier = ">=0.1.0" },
+    { name = "verifiers", extras = ["all"], specifier = "==0.1.0" },
     { name = "wandb", specifier = ">=0.16.0" },
 ]
 

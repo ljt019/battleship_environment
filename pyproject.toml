@@ -30,3 +30,9 @@ dependencies = [
     "huggingface-hub>=0.20.0",
     "wandb>=0.16.0",
 ]
+
+[tool.uv]
+# limit resolution to the platform you’re actually running on
+environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64' and python_full_version >= '3.12'"
+]

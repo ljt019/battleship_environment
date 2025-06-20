@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "verifiers[all]>=0.1.0",
+    "verifiers[all]==0.1.0",
     "huggingface-hub>=0.20.0",
     "wandb>=0.16.0",
 ]

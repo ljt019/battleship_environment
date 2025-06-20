@@ -4,8 +4,8 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 import torch
 import verifiers as vf
 
-from battleship_grpo import BattleshipEnv
-from config import (
+from src.battleship_grpo import BattleshipEnv
+from src.config import (
     MODEL_SIZE,
     BATCH_SIZE,
     GRPO_GRADIENT_ACCUMULATION_STEPS,

@@ -22,6 +22,10 @@ classifiers = [
 ]
 
 dependencies = [
+    "torch==2.4.1+cu124",
+    "torchvision==0.21.1+cu124",
+    "torchaudio==2.4.1+cu124",
+    "flash-attn==2.8.0.post2",
     "verifiers[all]==0.1.0",
     "huggingface-hub>=0.20.0",
     "wandb>=0.16.0",

@@ -17,27 +17,29 @@ from transformers import AutoTokenizer, TextIteratorStreamer  # apply template +
 
 from verifiers.parsers.xml_parser import XMLParser
 
-from src.battleship_grpo.battleship_env import (
+from battleship_grpo.battleship_env import (
     BattleshipEnv,
     BATTLESHIP_SYSTEM_PROMPT,
     BATTLESHIP_RULES,
 )
 
 # Local OpenAI wrapper
-from src.local_openai import LocalOpenAI
+from local_openai import LocalOpenAI, TransformersBackend
 
 # ----------------- CONFIG -------------------------------------------------- #
 # Name or path of the model to load
 #MODEL_NAME = "ljt019/Qwen3-1.7B-Battleship-SFT"
-MODEL_NAME = "ljt019/Qwen3-1.7B-battleship-grpo"
+MODEL_NAME = "ljt019/Qwen3-1.7B-Battleship-SFT"
 MAX_NEW_TOKENS = 2048
 TEMPERATURE = 0.7
 TOP_P = 0.9
 # device and dtype handled inside LocalOpenAI
 
 # Instantiate parser and local client once
+# Use the TransformersBackend so LocalOpenAI delegates inference to HuggingFace models in-process
 XML_PARSER = XMLParser(fields=["think", "guess"])
-CLIENT = LocalOpenAI(MODEL_NAME)
+
+CLIENT = LocalOpenAI(TransformersBackend(MODEL_NAME, trust_remote_code=True))
 
 def build_messages(system_prompt: str, board_compact: str, ships_block: str, history: List[Dict[str, str]]):
     """Return the messages list expected by Qwen chat template."""
@@ -96,7 +98,8 @@ def stream_think(messages: List[Dict[str, str]]) -> str:
     Returns the full assistant answer string (reasoning + guess)."""
 
     # Get tokenizer/model from the LocalOpenAI cache (they are already loaded)
-    tokenizer, model = CLIENT._get_model(MODEL_NAME)  # pylint: disable=protected-access
+    # TransformersBackend exposes the private _get(...) helper we reuse here
+    tokenizer, model = CLIENT._backend._get(MODEL_NAME)  # pylint: disable=protected-access
 
     # Build chat-template prompt text and tokens
     prompt_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
@@ -198,16 +201,15 @@ def main():
         env_msg, state = env.env_response(messages, state)
         messages.append(env_msg)
 
-        # Pretty-print board section
-        board_match = re.search(r"<board>\s*(.*?)\s*</board>", env_msg["content"], re.DOTALL)
-        if board_match:
-            board_compact = board_match.group(1).strip()
-            from src.battleship_grpo.battleship_game import BattleshipGame  # local import to avoid circular
-            print("\n",BattleshipGame.compact_to_pretty(board_compact), "\n")
-
         # Print result line (first line before <board>)
         result_line = env_msg["content"].split("\n", 1)[0]
         print(result_line)
+
+        # Extract the ASCII grid that the environment sends (already pretty-ish)
+        grid_match = re.search(r"<grid>\n(.*?)\n</grid>", env_msg["content"], re.DOTALL)
+        if grid_match:
+            grid_ascii = grid_match.group(1).rstrip()
+            print("\n" + grid_ascii + "\n")
 
         if env.is_completed(messages, state):
             print("\n🎉 Game over!", result_line)

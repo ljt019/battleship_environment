@@ -1,8 +1,8 @@
 import torch
 import verifiers as vf
 
-from src.battleship_grpo import BattleshipEnv
-from src.config import (
+from battleship_grpo import BattleshipEnv
+from config import (
     MODEL_SIZE,
     BATCH_SIZE,
     GRPO_GRADIENT_ACCUMULATION_STEPS,
@@ -16,7 +16,7 @@ from src.config import (
     GRPO_NUM_GENERATIONS,
 )
 
-model, tokenizer = vf.get_model_and_tokenizer("ljt019/Qwen3-1.7B-battleship-grpo")
+model, tokenizer = vf.get_model_and_tokenizer("ljt019/Qwen3-1.7B-Battleship-SFT")
 model = model.to(torch.bfloat16)
 
 vf_env = BattleshipEnv(
@@ -33,7 +33,7 @@ training_args.num_generations=GRPO_NUM_GENERATIONS
 training_args.gradient_accumulation_steps=GRPO_GRADIENT_ACCUMULATION_STEPS
 training_args.max_prompt_length=MAX_PROMPT_LENGTH
 training_args.max_completion_length=MAX_COMPLETION_LENGTH
-training_args.max_steps = 5000
+training_args.max_steps = 10000
 training_args.mask_env_responses=True
 training_args.bf16 = True
 training_args.gradient_checkpointing = True

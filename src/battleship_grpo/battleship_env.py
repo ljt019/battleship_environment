@@ -365,7 +365,9 @@ class BattleshipEnv(MultiTurnEnv):
     def _build_ascii_grid(self, game: "BattleshipGame") -> str:
         """Return ASCII grid string with header and rows."""
         cols = game.cols  # 'abcdefghij'
-        header = " " + " ".join(cols)
+        # Indent so that column 'a' sits above the first cell (row label width + 1 space)
+        row_label_width = len(str(max(map(int, game.rows))))
+        header = " " * (row_label_width + 1) + " ".join(cols)
         lines = [header]
         for r in game.rows:
             row_cells = []

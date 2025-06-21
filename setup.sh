@@ -30,7 +30,7 @@ setup_uv() {
     echo "Synchronising Python dependencies with uv..."
         uv sync
     echo "Installing flash-attn via uv..."
-        uv pip install flash-attn --no-build-isolation
+        uv pip install flash-attn==2.7.4.post1 --no-build-isolation
 }
 
 setup_huggingface() {

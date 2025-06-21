@@ -7,7 +7,7 @@ import re
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.battleship_grpo import BattleshipEnv
-from config import NUM_DATASET_SAMPLES, MAX_TOKENS_API, MAX_CONCURRENT_API, SEED, MAX_TURNS, DATASET_PATH, OPENROUTER_BASE_URL, OPENROUTER_API_KEY, OPENROUTER_MODEL
+from src.config import NUM_DATASET_SAMPLES, MAX_TOKENS_API, MAX_CONCURRENT_API, SEED, MAX_TURNS, DATASET_PATH, OPENROUTER_BASE_URL, OPENROUTER_API_KEY, OPENROUTER_MODEL
 
 def main():
     client = OpenAI(

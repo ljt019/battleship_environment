@@ -16,4 +16,4 @@ setup_dummy_openai_api_key
 CUDA_VISIBLE_DEVICES=1 uv run accelerate launch \
   --config_file configs/zero3.yaml \
   --num_processes 1 \
-  scripts/train_grpo.py
+  scripts/train/train_grpo.py

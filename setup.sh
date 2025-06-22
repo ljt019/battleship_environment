@@ -54,4 +54,6 @@ setup_wandb() {
 
 setup_dummy_openai_api_key() {
     export OPENAI_API_KEY=asdf
+    export NCCL_P2P_DISABLE=1     # falls back to shared-memory
+    export NCCL_DEBUG=INFO
 }

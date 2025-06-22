@@ -44,7 +44,7 @@ training_args.gradient_checkpointing = True
 training_args.beta = 0.05
 training_args.learning_rate = 5e-7
 training_args.save_strategy = "steps"
-training_args.save_steps = 50
+training_args.save_steps = 1000
 training_args.save_total_limit = 10
 training_args.vllm_server_host="127.0.0.1"
 

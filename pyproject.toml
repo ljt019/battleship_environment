@@ -22,10 +22,11 @@ classifiers = [
 ]
 
 dependencies = [
-    "verifiers[all]",
+    "vllm==0.8.5",
     "torch>=2.4.0",
     "huggingface-hub>=0.20.0",
     "wandb>=0.16.0",
+    "verifiers[all]>=0.0.0",
 ]
 
 [build-system]
@@ -38,3 +39,13 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["battleship_grpo*", "local_openai*"]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu124", marker = "sys_platform == 'linux'" },
+]

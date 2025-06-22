@@ -218,13 +218,25 @@ class BattleshipEnv(MultiTurnEnv):
                 model: str,
                 prompt: Union[str, List[Dict[str, Any]]],
                 answer: str,
-                sampling_args: Dict[str, Any] = {},
+                task: Any = None,
+                info: Any = None,
+                sampling_args: Dict[str, Any] | None = None,
                 **kwargs: Any) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
         Generate a multi-turn rollout with the environment, with conversation compacting.
         """
+        # Ensure mutable defaults are not shared across invocations
+        if sampling_args is None:
+            sampling_args = {}
+
         is_completed = False
-        state = {'answer': answer}
+        # Preserve the extra fields in the rollout state so they can be used
+        # by downstream verifiers/rubrics if needed.
+        state = {
+            'answer': answer,
+            'task': task,
+            'info': info,
+        }
         assert isinstance(prompt, list)
         messages = deepcopy(prompt) 
         completion = []

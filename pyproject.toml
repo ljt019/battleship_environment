@@ -22,7 +22,6 @@ classifiers = [
 ]
 
 dependencies = [
-    "vllm==0.8.5",
     "torch>=2.4.0",
     "huggingface-hub>=0.20.0",
     "wandb>=0.16.0",

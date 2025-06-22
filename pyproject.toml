@@ -49,4 +49,3 @@ explicit = true
 torch = [
   { index = "pytorch-cu124", marker = "sys_platform == 'linux'" },
 ]
-]

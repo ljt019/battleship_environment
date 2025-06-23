@@ -11,7 +11,7 @@ setup_huggingface
 
 setup_dummy_openai_api_key
 
-CUDA_VISIBLE_DEVICES=0,1 uv run vf-vllm \
+CUDA_VISIBLE_DEVICES=0,1 uv run python scripts/vf_vllm_spawn.py \
   --model 'ljt019/Qwen3-1.7B-Battleship-SFT' \
   --port 8000 \
   --host 127.0.0.1 \

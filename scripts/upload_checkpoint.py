@@ -11,7 +11,7 @@ CKPT_DIR = "outputs/battleship-grpo-1.7B/checkpoint-3000"
 REPO_ID = "ljt019/Qwen3-1.7B-Battleship-GRPO"
 
 def ensure_token() -> str:
-    token = token or os.getenv("HF_TOKEN") or HfFolder.get_token()
+    token = os.getenv("HF_TOKEN") or HfFolder.get_token()
     if not token:
         sys.exit("[ERROR] No HuggingFace token provided. Set HF_TOKEN env var or run `huggingface-cli login`.")
     return token

@@ -29,10 +29,12 @@ from local_openai import LocalOpenAI, TransformersBackend
 # ----------------- CONFIG -------------------------------------------------- #
 # Name or path of the model to load
 #MODEL_NAME = "ljt019/Qwen3-1.7B-Battleship-SFT"
-MODEL_NAME = "ljt019/Qwen3-1.7B-Battleship-SFT"
+MODEL_NAME = "ljt019/Qwen3-1.7B-Battleship-GRPO"
 MAX_NEW_TOKENS = 2048
 TEMPERATURE = 0.7
 TOP_P = 0.9
+REPETITION_PENALTY = 1.1
+NO_REPEAT_NGRAM = 3
 # device and dtype handled inside LocalOpenAI
 
 # Instantiate parser and local client once
@@ -113,6 +115,8 @@ def stream_think(messages: List[Dict[str, str]]) -> str:
         do_sample=True,
         temperature=TEMPERATURE,
         top_p=TOP_P,
+        repetition_penalty=REPETITION_PENALTY,
+        no_repeat_ngram_size=NO_REPEAT_NGRAM,
         pad_token_id=tokenizer.eos_token_id,
         streamer=streamer,
     )

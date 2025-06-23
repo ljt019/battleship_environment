@@ -312,4 +312,49 @@ def setup_reward_rubric(rubric):
     rubric.add_reward_func(clipped_follow_up_reward, weight=1.0)           # Strategic follow-up (reduced weight)
     rubric.add_reward_func(partial_progress_reward, weight=1.0)            # Reduce sparsity by rewarding partial goals
     
+    # New safety rewards
+    rubric.add_reward_func(lambda *a, **k: _clip_reward(repetition_penalty_func(*a, **k)), weight=1.0)
+    rubric.add_reward_func(lambda *a, **k: _clip_reward(non_english_penalty_func(*a, **k)), weight=1.0)
+    
     return rubric
+
+# ---------------------------------------------------------------------------
+# New: repetition and language penalties
+# ---------------------------------------------------------------------------
+
+
+def repetition_penalty_func(completion: List[Dict[str, Any]], answer: str, **kwargs) -> float:
+    """Negative reward proportional to excessive repetition inside a single assistant message.
+
+    We count duplicate *tokens* (case-insensitive A-Z words) beyond a small threshold
+    and subtract 0.1 for each excess duplicate. Stops runaway word-salad loops early.
+    """
+    import collections, re as _re
+
+    penalty = 0.0
+    for msg in completion:
+        if msg.get('role') != 'assistant':
+            continue
+
+        # Simple word tokenisation on ASCII letters – avoids ICU dependency
+        tokens = _re.findall(r"[A-Za-z']+", msg.get('content', '').lower())
+        counts = collections.Counter(tokens)
+        # Count duplicates: each occurrence after the first incurs penalty
+        excess = sum(max(0, c - 1) for c in counts.values())
+        # Allow up to 3 duplicates (common stop-words etc.) with no cost
+        excess = max(0, excess - 3)
+        penalty -= 0.1 * excess
+
+    return penalty
+
+
+def non_english_penalty_func(completion: List[Dict[str, Any]], answer: str, **kwargs) -> float:
+    """Penalty if any assistant message contains non-ASCII letters (proxy for non-English)."""
+    import re as _re
+
+    for msg in completion:
+        if msg.get('role') != 'assistant':
+            continue
+        if _re.search(r"[^\x00-\x7F]", msg.get('content', '')):
+            return -1.0  # Immediate penalty; clipped later
+    return 0.0

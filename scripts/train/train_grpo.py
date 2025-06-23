@@ -20,7 +20,7 @@ from config import (
     GRPO_NUM_GENERATIONS,
 )
 
-model, tokenizer = vf.get_model_and_tokenizer("ljt019/Qwen3-1.7B-Battleship-SFT")
+model, tokenizer = vf.get_model_and_tokenizer("ljt019/Qwen3-1.7B-Battleship-GRPO")
 model = model.to(torch.bfloat16)
 
 vf_env = BattleshipEnv(

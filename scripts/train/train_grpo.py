@@ -37,15 +37,15 @@ training_args.num_generations=GRPO_NUM_GENERATIONS
 training_args.gradient_accumulation_steps=GRPO_GRADIENT_ACCUMULATION_STEPS
 training_args.max_prompt_length=MAX_PROMPT_LENGTH
 training_args.max_completion_length=MAX_COMPLETION_LENGTH
-training_args.max_steps = 100000
+training_args.max_steps = 2000
 training_args.mask_env_responses=True
 training_args.bf16 = True
 training_args.gradient_checkpointing = True
 training_args.beta = 0.15
 training_args.learning_rate = 5e-7
 training_args.save_strategy = "steps"
-training_args.save_steps = 1000
-training_args.save_total_limit = 10
+training_args.save_steps = 500
+training_args.save_total_limit = 5
 training_args.vllm_server_host="127.0.0.1"
 
 def main():

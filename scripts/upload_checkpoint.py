@@ -7,8 +7,8 @@ from typing import Optional
 
 from huggingface_hub import HfApi, HfFolder, upload_folder
 
-CKPT_DIR = "outputs/battleship-grpo-1.7B/checkpoint-1100"
-REPO_ID = "ljt019/Qwen3-1.7B-battleship-grpo"
+CKPT_DIR = "outputs/battleship-grpo-1.7B/checkpoint-3000"
+REPO_ID = "ljt019/Qwen3-1.7B-Battleship-GRPO"
 
 def ensure_token() -> str:
     token = token or os.getenv("HF_TOKEN") or HfFolder.get_token()

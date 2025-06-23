@@ -1,11 +1,6 @@
 import os
 import sys
 import multiprocessing as mp
-# Use spawn start method to avoid CUDA re-initialisation errors in forked workers
-try:
-    mp.set_start_method("spawn", force=False)
-except RuntimeError:
-    pass
 import argparse
 from openai import OpenAI
 

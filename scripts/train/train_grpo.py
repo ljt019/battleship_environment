@@ -1,10 +1,5 @@
 import torch
 import multiprocessing as mp
-# Ensure CUDA is initialised in spawned subprocesses, not forked ones
-try:
-    mp.set_start_method("spawn", force=False)
-except RuntimeError:
-    pass  # start method already set
 import verifiers as vf
 
 import os 

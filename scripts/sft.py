@@ -8,9 +8,6 @@ accelerate launch --config-file configs/zero3.yaml --num-processes 8 examples/sf
 
 ############## Training Config ##############
 
-MAX_TURNS = 10
-NUM_GAMES = 100
-
 MODEL_NAME = "Qwen/Qwen3-4B-Instruct-2507"
 DATASET_NAME = "ljt019/battleship-sft-0825"
 

@@ -1,0 +1,1 @@
+snap install astral-uv --classic

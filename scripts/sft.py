@@ -37,8 +37,8 @@ dataset = load_dataset(DATASET_NAME, split="train")
 
 tok_counts = []
 for row in dataset:
-    # count tokens in (prompt, completion)
-    messages = row["prompt"] + row["completion"]  # type: ignore
+    # count tokens in completion (which contains the full conversation)
+    messages = row["completion"]  # type: ignore
     toks = tokenizer.apply_chat_template(messages, tokenize=True)
     tok_counts.append(len(toks))
 
@@ -75,6 +75,7 @@ trainer = SFTTrainer(
     model=model,
     args=args,
     train_dataset=dataset,  # type: ignore
+    dataset_text_field="completion",  # Specify which field contains the conversation
 )
 
 trainer.train()

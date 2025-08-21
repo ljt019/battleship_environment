@@ -11,12 +11,23 @@ class Coordinate:
 
     @classmethod
     def from_str(cls, s: str) -> "Coordinate":
-        """Parse coordinate string like 'b6' into Coordinate."""
-        s = s.lower().strip()
-        if len(s) < 2:
+        """Parse coordinate string like 'b6' into Coordinate.
+        
+        Args:
+            s: Coordinate string (case-insensitive, whitespace is trimmed).
+               Examples: 'b6', 'B6', ' a10 '
+        
+        Returns:
+            Coordinate object with normalized column (lowercase) and row.
+        
+        Raises:
+            ValueError: If coordinate format is invalid.
+        """
+        normalized_input = s.lower().strip()
+        if len(normalized_input) < 2:
             raise ValueError(f"Invalid coordinate format: {s}")
-        col = s[0]
-        row = int(s[1:])
+        col = normalized_input[0]
+        row = int(normalized_input[1:])
         return cls(col=col, row=row)
 
     def to_str(self) -> str:
@@ -45,12 +56,16 @@ class ShipStatus:
     @property
     def is_sunk(self) -> bool:
         """True if all coordinates have been hit."""
-        return set(self.hits) == set(self.coords)
+        coords_set = set(self.coords)
+        hits_set = set(self.hits)
+        return hits_set == coords_set
 
     @property
     def remaining_cells(self) -> int:
         """Number of unhit cells remaining."""
-        return len(self.coords) - len(self.hits)
+        total_cells = len(self.coords)
+        hit_cells = len(self.hits)
+        return total_cells - hit_cells
 
 
 @dataclass

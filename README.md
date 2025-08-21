@@ -8,7 +8,7 @@ Checkout [verifiers](https://github.com/willccbb/verifiers) it's awesome!
 
 #### [A Llama Sunk My Battleship!](https://openreview.net/pdf/75c9c75047025b188ec2a084d248e8662e2e3a4e.pdf) 
 
-Interesting paper that uses in context examples to try and teach gpt-4 to play battleship, particularly useful for me in that they tried three differen't methods of representing the board to the model:
+Interesting paper that uses in context examples to try and teach gpt-4 to play battleship, particularly useful for me in that they tried three different methods of representing the board to the model:
 
 - Grid: classic grid style (what i plan to use)
 - Textual: text representation (i.e. 1-C is a water tile)

@@ -35,10 +35,19 @@ MAX_GRAD_NORM = 0.1
 model, tokenizer = vf.get_model_and_tokenizer(MODEL_NAME, use_liger=False)
 dataset = load_dataset(DATASET_NAME, split="train")
 
+
+# Rename "completion" field to "messages" for SFTTrainer compatibility
+def rename_completion_to_messages(example):
+    example["messages"] = example["completion"]
+    return example
+
+
+dataset = dataset.map(rename_completion_to_messages)
+
 tok_counts = []
 for row in dataset:
-    # count tokens in completion (which contains the full conversation)
-    messages = row["completion"]  # type: ignore
+    # count tokens in messages (which contains the full conversation)
+    messages = row["messages"]  # type: ignore
     toks = tokenizer.apply_chat_template(messages, tokenize=True)
     tok_counts.append(len(toks))
 
@@ -69,7 +78,7 @@ args = SFTConfig(
     log_on_each_node=True,
     push_to_hub=True,
     hub_model_id=HUB_MODEL_ID,
-    dataset_text_field="completion",
+    dataset_text_field="messages",
 )
 
 trainer = SFTTrainer(

@@ -32,7 +32,11 @@ MAX_GRAD_NORM = 0.1
 
 
 # convenience function for FA2 initialization
-model, tokenizer = vf.get_model_and_tokenizer(MODEL_NAME, use_liger=False)
+model, tokenizer = vf.get_model_and_tokenizer(
+    MODEL_NAME,
+    use_liger=False,
+    model_kwargs={"attn_implementation": "eager"},
+)
 dataset = load_dataset(DATASET_NAME, split="train")
 
 

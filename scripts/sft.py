@@ -69,13 +69,13 @@ args = SFTConfig(
     log_on_each_node=True,
     push_to_hub=True,
     hub_model_id=HUB_MODEL_ID,
+    dataset_text_field="completion",
 )
 
 trainer = SFTTrainer(
     model=model,
     args=args,
     train_dataset=dataset,  # type: ignore
-    dataset_text_field="completion",  # Specify which field contains the conversation
 )
 
 trainer.train()

@@ -98,15 +98,15 @@ async def generate_battleship_training_data(
                         {
                             "game_seed": seed,
                             "temperature": temp,
-                            "completion": completion,
+                            "messages": completion,
+                            "turns": state.get("turn", 0),
+                            "victory": state.get("victory", False),
                             "reward": total_reward,
                             "victory_reward": victory_reward,
                             "hit_reward": hit_reward,
                             "strategic_hit_reward": strategic_hit_reward,
                             "coverage_efficiency_reward": coverage_efficiency_reward,
                             "format_reward": format_reward,
-                            "victory": state.get("victory", False),
-                            "turns": state.get("turn", 0),
                         }
                     )
                     print(

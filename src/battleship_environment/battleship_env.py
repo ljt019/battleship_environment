@@ -5,6 +5,7 @@ import verifiers as vf
 from verifiers.types import Messages, State
 
 from battleship_emulator import BattleshipEmulator
+from battleship_environment import BATTLESHIP_INITIAL_MESSAGE, BATTLESHIP_SYSTEM_PROMPT
 
 
 class BattleshipEnv(vf.MultiTurnEnv):
@@ -30,8 +31,7 @@ class BattleshipEnv(vf.MultiTurnEnv):
             game_state["turn"] = 0  # Initialize turn counter
 
             # Create initial game message
-            initial_message = self._create_initial_message()
-            return [{"role": "user", "content": initial_message}], game_state
+            return [{"role": "user", "content": BATTLESHIP_INITIAL_MESSAGE}], game_state
 
         # Get the last message from the assistant
         last_msg = messages[-1]
@@ -101,50 +101,6 @@ class BattleshipEnv(vf.MultiTurnEnv):
         temp_parser = vf.XMLParser(fields=["guess"], answer_field="guess")
         return temp_parser.parse_answer(content) or ""
 
-    def _create_initial_message(self) -> str:
-        """Create the initial game message with rules and first game state."""
-        return """Goal
-———
-Sink all enemy ships by guessing coordinates.
-
-Coordinate format
-  - Column letters (a-j) + row numbers (1-10), e.g., e5.
-
-Symbols in <grid>
-  ? unknown   o miss   x hit (unsunk)   s sunk-ship part
-
-Per-turn tags (sent each turn)
-  - <result move="c3" value="hit|miss|sunk|invalid|victory"/> outcome of your last shot
-  - <remaining carrier="…" …/> ships still afloat
-  - <state hits="…" misses="…" sunk="…" unknown="N"/> status of guessed cells
-  - <grid> header line + 10 rows </grid> current board representation
-
-Ship sizes
-  Carrier (5) • Battleship (4) • Cruiser (3) • Submarine (3) • Destroyer (2)
-
-Important rules
-  - NEVER guess a cell that isn't marked "?" (unknown) on the grid.
-  - Guessing previously guessed cells (marked o, x, or s) is invalid.
-
-<result move="" value="start"/>
-<remaining carrier="1" battleship="1" cruiser="1" submarine="1" destroyer="1" />
-<state hits="" misses="" sunk="" unknown="100"/>
-<grid>
- a b c d e f g h i j
- 1 ? ? ? ? ? ? ? ? ? ?
- 2 ? ? ? ? ? ? ? ? ? ?
- 3 ? ? ? ? ? ? ? ? ? ?
- 4 ? ? ? ? ? ? ? ? ? ?
- 5 ? ? ? ? ? ? ? ? ? ?
- 6 ? ? ? ? ? ? ? ? ? ?
- 7 ? ? ? ? ? ? ? ? ? ?
- 8 ? ? ? ? ? ? ? ? ? ?
- 9 ? ? ? ? ? ? ? ? ? ?
-10 ? ? ? ? ? ? ? ? ? ?
-</grid>
-
-Next move:"""
-
     def _format_game_state(
         self,
         move: str,
@@ -205,7 +161,7 @@ Next move:"""
         unknown_count = len(board.unknown_cells)
 
         # Format grid
-        grid_lines = [" a b c d e f g h i j"]
+        grid_lines = ["   a b c d e f g h i j"]
         for row in range(1, 11):
             line = f"{row:2}"
             for col in "abcdefghij":
@@ -374,47 +330,41 @@ def load_environment(**kwargs):
             print(f"Coverage efficiency reward error: {e}")
             return 0.0
 
-    # Create rubric
+    def tool_call_penalty(completion, answer, **kwargs):
+        """Penalize usage of <tool_call> tags in responses."""
+        try:
+            # Check if completion contains tool_call tags (case insensitive)
+            completion_text = str(completion).lower()
+
+            # Count occurrences of tool_call patterns
+            tool_call_patterns = [
+                "<tool_call>",
+                "</tool_call>",
+            ]
+            for pattern in tool_call_patterns:
+                if pattern in completion_text:
+                    return -0.2  # Penalty for tool calls
+            return 0.0
+        except Exception as e:
+            print(f"Tool call penalty error: {e}")
+            return 0.0
+
     rubric = vf.Rubric(
         funcs=[
             victory_reward,
             hit_reward,
             strategic_hit_reward,
             coverage_efficiency_reward,
+            tool_call_penalty,
             parser.get_format_reward_func(),
         ],
-        weights=[0.6, 0.4, 0.5, 0.3, 0.2],
+        weights=[0.6, 0.4, 0.5, 0.3, 0.2, 0.2],
     )
-
-    # System prompt
-    system_prompt = """You are playing Battleship.
-
-After every turn, the environment sends ONE user message containing the current game state in tagged form:
-
-<result move="c3" value="hit|miss|sunk|invalid|victory"/>
-<remaining carrier="N" battleship="N" cruiser="N" submarine="N" destroyer="N"/>
-<state hits="a5 e4" misses="b1 d6" sunk="d5 e5" unknown="83"/>
-<grid>
-(? unknown, o miss, x hit, s sunk)
-10x10 grid representing current board state
-</grid>
-
-Rules for you:
-1. Inside <think>, reference ONLY coordinates appearing in the hits, misses, or sunk lists.
-2. Finish ships by guessing cells directly adjacent (up, down, left, right—no diagonals) to confirmed hits before exploring new areas.
-3. Keep <think> ≤ 75 tokens.
-4. Respond EXACTLY in the following format and nothing else:
-
-<think>
-Concise reasoning about the next best shot.
-</think>
-
-<guess>[coordinate]</guess>"""
 
     # Return configured environment
     return BattleshipEnv(
         dataset=dataset,
-        system_prompt=system_prompt,
+        system_prompt=BATTLESHIP_SYSTEM_PROMPT,
         parser=parser,
         rubric=rubric,
         **kwargs,

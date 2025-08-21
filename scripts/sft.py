@@ -20,9 +20,9 @@ OUTPUT_DIR = "data/checkpoints"
 
 # Trainer args
 
-MAX_LENGTH = 8192  # Reduced from 16384 to save memory
-PER_DEVICE_TRAIN_BATCH_SIZE = 1  # Reduced from 2 to save memory
-GRADIENT_ACCUMULATION_STEPS = 2  # Increased to maintain effective batch size
+MAX_LENGTH = 8192
+PER_DEVICE_TRAIN_BATCH_SIZE = 1
+GRADIENT_ACCUMULATION_STEPS = 2
 LEARNING_RATE = 2e-5
 NUM_TRAIN_EPOCHS = 3
 WEIGHT_DECAY = 0.01

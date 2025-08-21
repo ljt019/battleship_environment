@@ -13,6 +13,8 @@ NUM_GAMES = 100
 NUM_EXAMPLES = 2
 NUM_ROLLOUTS_PER_EXAMPLE = 1
 
+OPENROUTER_MODEL_NAME = "qwen/qwen3-235b-a22b-2507"
+
 MAX_CONCURRENT = 8
 
 #############################################
@@ -22,14 +24,11 @@ load_dotenv()
 # Get required environment variables
 api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
 base_url = os.getenv("OPENAI_BASE_URL")
-model = os.getenv("MODEL_NAME")
 
 if not api_key:
     raise ValueError("OPENAI_API_KEY or OPENROUTER_API_KEY must be set")
 if not base_url:
     raise ValueError("OPENAI_BASE_URL must be set")
-if not model:
-    raise ValueError("MODEL_NAME must be set")
 
 env = load_environment(max_turns=MAX_TURNS, num_games=NUM_GAMES)
 
@@ -37,7 +36,7 @@ client = OpenAI(api_key=api_key, base_url=base_url)
 
 results = env.evaluate(
     client,
-    model,
+    OPENROUTER_MODEL_NAME,
     num_examples=NUM_EXAMPLES,
     rollouts_per_example=NUM_ROLLOUTS_PER_EXAMPLE,
     max_concurrent=MAX_CONCURRENT,

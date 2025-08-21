@@ -7,14 +7,22 @@ from dotenv import load_dotenv
 
 from battleship_environment import load_environment
 
-# Configuration constants
+################ Data Gen Config #################
+
 NUM_SAMPLES = 10  # each sample creates 3 examples at diff temps
 NUM_GAMES = 1000
 MAX_TURNS = 50
+
+OPENROUTER_MODEL_NAME = "qwen/qwen3-235b-a22b-2507"
+
 UPLOAD_TO_HUB = True
 HUB_REPO_ID = "ljt019/battleship-sft-0825"
+
 OUTPUT_PATH = "data"
+
 MIN_SCORE_THRESHOLD = 0.6
+
+##################################################
 
 
 async def generate_battleship_training_data(
@@ -173,20 +181,17 @@ async def main():
     # Get required environment variables (no fallbacks)
     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
     base_url = os.getenv("OPENAI_BASE_URL")
-    model = os.getenv("MODEL_NAME")
 
     # Validate required environment variables
     if not api_key:
         raise ValueError("OPENAI_API_KEY or OPENROUTER_API_KEY must be set")
     if not base_url:
         raise ValueError("OPENAI_BASE_URL must be set")
-    if not model:
-        raise ValueError("MODEL_NAME must be set")
 
     client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
     print("Starting battleship training data generation...")
-    print(f"Using model: {model}")
+    print(f"Using model: {OPENROUTER_MODEL_NAME}")
     print(f"Using base URL: {base_url}")
     print(f"Generating {NUM_SAMPLES} samples")
     print(f"Minimum score threshold: {MIN_SCORE_THRESHOLD}")
@@ -195,7 +200,7 @@ async def main():
     dataset = await generate_battleship_training_data(
         env=env,
         client=client,
-        model=model,
+        model=OPENROUTER_MODEL_NAME,
         num_samples=NUM_SAMPLES,
     )
 

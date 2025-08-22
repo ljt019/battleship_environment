@@ -4,7 +4,7 @@ from datasets import load_dataset
 MODEL_NAME = "Qwen/Qwen3-4B-Instruct-2507"
 DATASET_NAME = "ljt019/battleship-sft-0825"
 
-model, tokenizer = vf.get_tokenizer(
+tokenizer = vf.get_tokenizer(
     MODEL_NAME,
 )
 dataset = load_dataset(DATASET_NAME, split="train")

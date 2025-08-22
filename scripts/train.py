@@ -4,7 +4,7 @@ import os
 
 SCRIPT_PATH = "scripts/sft.py"
 
-CUDA_VISIBLE_DEVICES = "0,1"
+CUDA_VISIBLE_DEVICES = "0,1,2,3"
 
 #############################################
 

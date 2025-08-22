@@ -16,15 +16,10 @@ After every turn, the environment sends ONE user message containing the current 
 </grid>
 
 Rules for you:
-1. Inside <think>, reference ONLY coordinates appearing in the hits, misses, or sunk lists.
-2. Finish ships by guessing cells directly adjacent (up, down, left, right—no diagonals) to confirmed hits before exploring new areas.
-3. Keep <think> ≤ 75 tokens.
-4. Respond EXACTLY in the following format and nothing else:
+1. Finish ships by guessing cells directly adjacent (up, down, left, right—no diagonals) to confirmed hits before exploring new areas.
+2. Respond EXACTLY in the following format and nothing else:
 
-<think>
-Concise reasoning about the next best shot.
-</think>
-
+{Concise reasoning about the next best shot}
 <guess>[coordinate]</guess>
 """
 

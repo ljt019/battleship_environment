@@ -5,7 +5,8 @@ import verifiers as vf
 from verifiers.types import Messages, State
 
 from battleship_emulator import BattleshipEmulator
-from battleship_environment import BATTLESHIP_INITIAL_MESSAGE, BATTLESHIP_SYSTEM_PROMPT
+
+from .prompts import BATTLESHIP_INITIAL_MESSAGE, BATTLESHIP_SYSTEM_PROMPT
 
 
 class BattleshipEnv(vf.MultiTurnEnv):
@@ -19,16 +20,17 @@ class BattleshipEnv(vf.MultiTurnEnv):
         self, messages: Messages, game_state: State, **kwargs
     ) -> Tuple[Messages, State]:
         """Define how the environment responds."""
-        # Check if this is the first call (no emulator state yet)
-        if "emulator_state" not in game_state:
+        # Check if this is the first call - either no messages or just system message
+        if not messages or (len(messages) == 1 and messages[0]["role"] == "system"):
             # First turn: initialize game and send initial state
-            emulator = BattleshipEmulator(
-                board_size=self.board_size,
-                ship_sizes=self.ship_sizes,
-                seed=game_state.get("seed", None),
-            )
-            game_state["emulator_state"] = emulator.get_state().to_dict()
-            game_state["turn"] = 0  # Initialize turn counter
+            if "emulator_state" not in game_state:
+                emulator = BattleshipEmulator(
+                    board_size=self.board_size,
+                    ship_sizes=self.ship_sizes,
+                    seed=game_state.get("seed", None),
+                )
+                game_state["emulator_state"] = emulator.get_state().to_dict()
+                game_state["turn"] = 0
 
             # Create initial game message
             return [{"role": "user", "content": BATTLESHIP_INITIAL_MESSAGE}], game_state
@@ -47,6 +49,16 @@ class BattleshipEnv(vf.MultiTurnEnv):
                     "content": "Please provide a valid move in the format <guess>[coordinate]</guess>",
                 }
             ], game_state
+
+        # Ensure emulator state exists (in case state wasn't properly initialized)
+        if "emulator_state" not in game_state:
+            emulator = BattleshipEmulator(
+                board_size=self.board_size,
+                ship_sizes=self.ship_sizes,
+                seed=game_state.get("seed", None),
+            )
+            game_state["emulator_state"] = emulator.get_state().to_dict()
+            game_state["turn"] = 0
 
         # Process the move
         emulator = self._restore_emulator(game_state["emulator_state"])
@@ -160,10 +172,10 @@ class BattleshipEnv(vf.MultiTurnEnv):
 
         unknown_count = len(board.unknown_cells)
 
-        # Format grid
-        grid_lines = ["   a b c d e f g h i j"]
+        # Format grid with proper alignment
+        grid_lines = ["   a b c d e f g h i j"]  # Header with 3 spaces before 'a'
         for row in range(1, 11):
-            line = f"{row:2}"
+            line = f"{row:2d}"  # Right-align row numbers in 2-character field
             for col in "abcdefghij":
                 cell = board.cells[f"{col}{row}"]
                 line += f" {cell}"
@@ -185,6 +197,64 @@ class BattleshipEnv(vf.MultiTurnEnv):
     def is_completed(self, messages: Messages, game_state: State, **kwargs) -> bool:
         """Check if the game is completed."""
         return game_state.get("victory", False)
+
+    async def rollout(
+        self,
+        client,
+        model: str,
+        prompt: Messages,
+        answer: str = "",
+        task: str = "default",
+        info=None,
+        sampling_args=None,
+        **kwargs,
+    ):
+        """
+        Override rollout to ensure initial game state is provided before first model call.
+        """
+        # Ensure info is not None (parent rollout expects it)
+        if info is None:
+            info = {}
+
+        # If prompt is empty or only has system message, we need to add initial game state
+        if not prompt or (len(prompt) == 1 and prompt[0]["role"] == "system"):
+            # Ensure we have a system prompt
+            if not prompt:
+                prompt = []
+            if not prompt or prompt[0]["role"] != "system":
+                prompt.insert(0, {"role": "system", "content": self.system_prompt})
+
+            # Get initial game state from environment
+            state = kwargs.get("state", {})
+            if "seed" in state:
+                # Preserve the seed for reproducible games
+                initial_state = {"seed": state["seed"]}
+            else:
+                initial_state = {}
+
+            # Call env_response to get the initial game state
+            env_msgs, initial_state = self.env_response(prompt, initial_state)
+            prompt = prompt + env_msgs
+
+            # Update kwargs with the initialized state
+            kwargs["state"] = initial_state
+
+        # Call parent rollout with the complete prompt
+        completion, final_state = await super().rollout(
+            client=client,
+            model=model,
+            prompt=prompt,
+            answer=answer,
+            task=task,
+            info=info,
+            sampling_args=sampling_args,
+            **kwargs,
+        )
+
+        # Parent rollout only returns the new messages, but we want to include
+        # our initial prompt in the returned completion for proper data splitting
+        full_conversation = prompt + completion
+        return full_conversation, final_state
 
 
 def _are_adjacent(coord1, coord2):

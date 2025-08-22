@@ -12,12 +12,12 @@ from battleship_environment import load_environment
 NUM_SAMPLES = 400
 NUM_GAMES = 1000
 MAX_TURNS = 70
-MAX_CONCURRENT = 10  # Number of concurrent rollouts
+MAX_CONCURRENT = 20  # Number of concurrent rollouts
 
 OPENROUTER_MODEL_NAME = "qwen/qwen3-235b-a22b-2507"
 
 UPLOAD_TO_HUB = True
-HUB_REPO_ID = "ljt019/battleship-1200"
+HUB_REPO_ID = "ljt019/battleship-multiturn-1200"
 
 OUTPUT_PATH = "data/training_data"
 

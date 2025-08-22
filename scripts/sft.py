@@ -38,6 +38,8 @@ model, tokenizer = vf.get_model_and_tokenizer(
 )
 dataset = load_dataset(DATASET_NAME, split="train")
 
+train_dataset = dataset.map(lambda x: {"messages": x["prompt"] + x["completion"]})
+
 tok_counts = []
 for row in dataset:
     # count tokens in messages (which contains the full conversation)
@@ -77,7 +79,7 @@ args = SFTConfig(
 trainer = SFTTrainer(
     model=model,
     args=args,
-    train_dataset=dataset,  # type: ignore
+    train_dataset=train_dataset,  # type: ignore
 )
 
 trainer.train()

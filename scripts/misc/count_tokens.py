@@ -6,7 +6,6 @@ DATASET_NAME = "ljt019/battleship-sft-0825"
 
 model, tokenizer = vf.get_tokenizer(
     MODEL_NAME,
-    use_liger=False,
 )
 dataset = load_dataset(DATASET_NAME, split="train")
 

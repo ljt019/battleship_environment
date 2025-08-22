@@ -9,9 +9,9 @@ accelerate launch --config-file configs/zero3.yaml --num-processes 8 examples/sf
 ############## Training Config ##############
 
 MODEL_NAME = "Qwen/Qwen3-4B-Instruct-2507"
-DATASET_NAME = "ljt019/battleship-sft-0825"
+DATASET_NAME = "ljt019/battleship-multiturn-1200"
 
-RUN_NAME = "battleship-sft-0825"
+RUN_NAME = "battleship-sft-220825"
 
 HUB_MODEL_ID = "ljt019/Qwen3-4B-Instruct-bs-sft-0825"
 PUSH_TO_HUB = True

@@ -72,7 +72,6 @@ args = SFTConfig(
     log_on_each_node=True,
     push_to_hub=True,
     hub_model_id=HUB_MODEL_ID,
-    dataset_text_field="messages",
 )
 
 trainer = SFTTrainer(

@@ -7,9 +7,9 @@ from battleship_environment import load_environment
 MAX_TURNS = 10
 NUM_GAMES = 100
 
-MODEL_NAME = "ljt019/Qwen3-4B-Instruct-bs-sft-0825"
+MODEL_NAME = "ljt019/Qwen3-4B-Instruct-bs-sft"
 
-RUN_NAME = "battleship-sft-0825"
+RUN_NAME = "battleship-grpo-220825"
 
 #############################################
 

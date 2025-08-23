@@ -2,9 +2,9 @@ import os
 
 ############## Training Config ##############
 
-SCRIPT_PATH = "scripts/sft.py"
+SCRIPT_PATH = "scripts/grpo.py"
 
-CUDA_VISIBLE_DEVICES = "0,1"
+CUDA_VISIBLE_DEVICES = "2,3"
 
 #############################################
 

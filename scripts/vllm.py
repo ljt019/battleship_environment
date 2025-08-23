@@ -2,10 +2,9 @@ import os
 
 ############## vLLM Config ##############
 
-MODEL_NAME = "Qwen/Qwen3-4B-Instruct-2507"
-# MODEL_NAME = "ljt019/Qwen3-4B-Instruct-bs-sft-0825" # for grpo
+MODEL_NAME = "ljt019/Qwen3-4B-Instruct-bs-sft"
 
-CUDA_VISIBLE_DEVICES = "0"
+CUDA_VISIBLE_DEVICES = "0,1"
 
 ##############################################
 

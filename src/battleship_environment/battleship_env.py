@@ -216,7 +216,7 @@ def load_environment(**kwargs):
     num_games = kwargs.get("num_games", 100)
     dataset_list = [
         {
-            "question": "Play Battleship",
+            "question": BATTLESHIP_INITIAL_MESSAGE,
             "seed": i,
             "answer": "victory",
         }

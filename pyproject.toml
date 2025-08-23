@@ -12,6 +12,7 @@ dependencies = [
     "verifiers>=0.1.2.post0",
     "huggingface-hub>=0.20.0",
     "wandb>=0.16.0",
+    "nest-asyncio>=1.6.0",
 ]
 
 [build-system]

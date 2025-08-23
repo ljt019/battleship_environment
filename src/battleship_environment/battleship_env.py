@@ -251,10 +251,9 @@ class BattleshipEnv(vf.MultiTurnEnv):
             **kwargs,
         )
 
-        # Parent rollout only returns the new messages, but we want to include
-        # our initial prompt in the returned completion for proper data splitting
-        full_conversation = prompt + completion
-        return full_conversation, final_state
+        # The parent rollout returns only new messages generated during the rollout
+        # We should return the same to maintain compatibility with VLLM processing
+        return completion, final_state
 
 
 def _are_adjacent(coord1, coord2):
